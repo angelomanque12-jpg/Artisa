@@ -17,7 +17,6 @@ API = os.environ.get("API_URL", "http://endpoints:8000")
 ROOT = Path(__file__).with_name("static")
 FILES = {"/": ("index.html", "text/html; charset=utf-8"),
          "/app.js": ("app.js", "text/javascript; charset=utf-8"),
-         "/map-data.js": ("map-data.js", "text/javascript; charset=utf-8"),
          "/mapa-base.js": ("mapa-base.js", "text/javascript; charset=utf-8"),
          "/mapa-base.css": ("mapa-base.css", "text/css; charset=utf-8"),
          "/exploracion-gps": ("gps-maps.html", "text/html; charset=utf-8"),
@@ -38,8 +37,8 @@ def static_cache(raw_path):
 # Segundos que el proxy espera a endpoints. Deben ser al menos los del navegador (app.js):
 # si el proxy corta antes, una consulta lenta pero válida se ve como "endpoints no disponibles".
 # Nginx espera hasta 150 s.
-SLOW_PREFIXES = (("/api/gps", 120), ("/api/prediccion", 120), ("/api/mapa", 90),
-                 ("/api/camiones", 90), ("/api/dashboard", 60))
+SLOW_PREFIXES = (("/api/gps", 120), ("/api/rutas-aprendidas", 90), ("/api/mapa", 90), ("/api/vigilancia", 90),
+                 ("/api/camiones", 90), ("/api/dashboard", 60), ("/api/chat", 140))
 
 
 def upstream_timeout(path):

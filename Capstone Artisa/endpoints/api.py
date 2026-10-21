@@ -14,7 +14,7 @@ import pymysql
 from common import dias
 from common.db import connect_db
 from common.http import JsonHandler, serve
-from endpoints import camiones_api, dashboard_api, prediccion_api, rutas_api
+from endpoints import camiones_api, chat_api, dashboard_api, rutas_api, vigilancia_api
 
 
 STARTED_AT = time.monotonic()
@@ -37,24 +37,19 @@ PENDING_RESPONSES = {
             "data_retention": "Sin resultados Machine disponibles.",
         },
     },
-    "/api/dashboard": {"status": "pending", "meses": [], "flota": [], "camiones": [], "sin_reportar": [],
+    "/api/vigilancia": {"status": "pending", "alertas": [], "vehiculos": [],
+                        "message": "El modelo todavía no aprende las rutas: se calcula con los días cerrados "
+                                   "del cierre diario y se actualiza solo."},
+    "/api/rutas-aprendidas": {"status": "pending", "rutas": [], "niveles": [],
+                              "message": "El modelo todavía no aprende las rutas: se calcula con los días "
+                                         "cerrados del cierre diario y se actualiza solo."},
+    "/api/dashboard": {"status": "pending", "meses": [], "flota": [], "camiones": [],
                        "totales": None},
-    "/api/prediccion": {
-        "status": "pending", "dias": [],
-        "message": "La predicción se está calculando (o faltan días cerrados: necesita al menos 21). "
-                   "Se actualiza sola en unos minutos.",
-    },
     "/api/camiones": {"status": "pending", "camiones": [], "resumen": None},
-    "/api/prediccion-rutas": {
-        "status": "pending", "dias": [],
-        "message": "La predicción por ruta se está calculando (o faltan días cerrados: necesita al menos 21). "
-                   "Se actualiza sola en unos minutos.",
-    },
 }
 BUILDERS = {"/api/mapa": rutas_api.classified_map, "/api/dashboard": dashboard_api.fleet_dashboard,
-            "/api/prediccion": prediccion_api.prediction,
-            "/api/prediccion-rutas": lambda cursor: prediccion_api.prediction(cursor, "rutas"),
-            "/api/camiones": camiones_api.fleet}
+            "/api/camiones": camiones_api.fleet, "/api/vigilancia": vigilancia_api.vigilancia,
+            "/api/rutas-aprendidas": vigilancia_api.rutas_aprendidas}
 
 
 # Telemetría actual (servicio telemetria). Mientras la API de la empresa no esté
@@ -453,27 +448,31 @@ def history_request(path, query):
     return truck_day, (asset_id, dia, limit, after)
 
 
-# --- Caché de /api/mapa y /api/dashboard -----------------------------------------
-# El mapa recorre la última posición de cada camión: con MariaDB ocupada (cierre diario)
-# puede tardar. Se calcula como máximo una vez por minuto, una sola consulta a la vez, y si
-# un cálculo falla se entrega el último resultado bueno. Las posiciones en vivo usan un
-# endpoint liviano independiente de esta caché.
+# --- Caché de los resultados pesados (BUILDERS) ------------------------------------------
+# Calcular /api/vigilancia (7 días de reportes de toda la flota) o el mapa puede tardar más de
+# lo que espera el navegador. Por eso nunca se hace esperar a nadie por un recálculo: si hay un
+# resultado guardado se entrega al tiempo (aunque tenga más de CACHE_SECONDS) y se recalcula
+# por detrás. Solo la primera petición después de arrancar espera, y para eso el servicio
+# calienta la caché al iniciar y mantiene al día lo que se pidió en los últimos minutos.
+# Si un cálculo falla se conserva el último resultado bueno. Un candado por ruta: el mapa, el
+# dashboard y la vigilancia se calculan en paralelo sin esperarse entre sí.
 CACHE_SECONDS = 60
+MANTENER_MINUTOS = 15        # se recalcula por detrás lo pedido en los últimos 15 min
 _cache = {}
-# Un candado por ruta: el mapa, el dashboard y la predicción se calculan en paralelo; antes
-# compartían uno y la predicción esperaba al mapa hasta agotar el tiempo del navegador.
 _cache_locks = {}
+_pedidas = {}
 
 
-def cached_result(path):
-    now = time.monotonic()
-    entry = _cache.get(path)
-    if entry and now - entry[0] < CACHE_SECONDS:
-        return entry[1]
-    with _cache_locks.setdefault(path, threading.Lock()):
+def _lock(path):
+    return _cache_locks.setdefault(path, threading.Lock())
+
+
+def _compute(path):
+    """Calcula y guarda el resultado de la ruta (una sola vez a la vez por ruta)."""
+    with _lock(path):
         entry = _cache.get(path)
         if entry and time.monotonic() - entry[0] < CACHE_SECONDS:
-            return entry[1]  # otra petición lo calculó mientras esperábamos
+            return entry[1]  # otro hilo lo calculó mientras esperábamos
         try:
             with connect_db(read_timeout=80) as connection, connection.cursor() as cursor:
                 result = BUILDERS[path](cursor)
@@ -486,6 +485,66 @@ def cached_result(path):
         return result
 
 
+def _refresh_later(path):
+    """Recalcula por detrás, salvo que ya haya un cálculo de esa ruta en curso."""
+    if not _lock(path).locked():
+        threading.Thread(target=_compute, args=(path,), daemon=True, name=f"cache{path}").start()
+
+
+def cached_result(path, wait=True):
+    """El último resultado de la ruta. Si está viejo se entrega igual y se recalcula por detrás.
+    Sin ningún resultado aún: con wait=True se calcula y se espera; con wait=False se pide por
+    detrás y se devuelve None."""
+    _pedidas[path] = time.monotonic()
+    entry = _cache.get(path)
+    if entry:
+        if time.monotonic() - entry[0] >= CACHE_SECONDS:
+            _refresh_later(path)
+        return entry[1]
+    if not wait:
+        _refresh_later(path)
+        return None
+    return _compute(path)
+
+
+def keep_warm():
+    """Al arrancar calcula todo una vez; después mantiene al día lo que alguien pidió hace poco."""
+    for path in BUILDERS:
+        _pedidas.setdefault(path, time.monotonic())
+    while True:
+        for path in BUILDERS:
+            reciente = time.monotonic() - _pedidas.get(path, float("-inf")) < MANTENER_MINUTOS * 60
+            entry = _cache.get(path)
+            if reciente and (not entry or time.monotonic() - entry[0] >= CACHE_SECONDS):
+                try:
+                    _compute(path)
+                except Exception as error:  # MariaDB aún arrancando, etc.: se reintenta en la vuelta siguiente
+                    print(f"Endpoints: caché de {path} pendiente ({type(error).__name__})", flush=True)
+        time.sleep(10)
+
+
+def builder_result(path, wait=True):
+    """Resultado guardado de la ruta. La vigilancia lleva además las alertas recién leídas del
+    registro (consulta liviana), para que nunca queden atrasadas respecto de la caché."""
+    result = cached_result(path, wait)
+    if path == "/api/vigilancia" and result and result.get("status") == "ok":
+        try:
+            with connect_db(read_timeout=15) as connection, connection.cursor() as cursor:
+                result = vigilancia_api.con_alertas(result, cursor)
+        except pymysql.MySQLError as error:
+            print(f"Endpoints: alertas sin refrescar ({type(error).__name__})", flush=True)
+    return result
+
+
+def chat_source(path):
+    """Fuentes del asistente: /api/estado (liviano) o el último resultado guardado, sin esperar
+    un recálculo: el asistente responde al tiempo con lo que ya ve la web."""
+    if path == "/api/estado":
+        with connect_db(autocommit=False, read_timeout=15) as connection, connection.cursor() as cursor:
+            return pipeline_state(cursor)
+    return builder_result(path, wait=False)
+
+
 class Handler(JsonHandler):
     def database_error(self, error):
         self.log_error("Error de MariaDB: %s", type(error).__name__)
@@ -495,9 +554,28 @@ class Handler(JsonHandler):
         })
 
     def do_POST(self):
-        self.respond(404, {"error": "Ruta no encontrada"})
+        if urlsplit(self.path).path != "/api/chat":
+            self.respond(404, {"error": "Ruta no encontrada"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = -1
+        if not 0 < length <= chat_api.MAX_CUERPO:
+            self.respond(413 if length > chat_api.MAX_CUERPO else 400, {"error": "Tamaño de cuerpo inválido"})
+            return
+        question, error = chat_api.read_question(self.rfile.read(length))
+        if error:
+            self.respond(400, {"error": error})
+            return
+        # El asistente solo lee los mismos resultados que ya ve la web (en caché salvo el estado).
+        status, payload = chat_api.answer(question, chat_source)
+        if status == 503:
+            self.log_error("Asistente no disponible: %s", payload["error"])
+        self.respond(status, payload)
 
-    do_DELETE = do_POST
+    def do_DELETE(self):
+        self.respond(404, {"error": "Ruta no encontrada"})
 
     def do_GET(self):
         parsed = urlsplit(self.path)
@@ -513,11 +591,13 @@ class Handler(JsonHandler):
                                          "/api/reportes/mes-completo?mes=YYYY-MM",
                                          "/api/reportes/camion?asset_id=X&fecha=YYYY-MM-DD",
                                          "/api/camiones/X?fecha=YYYY-MM-DD", "/api/dashboard/camion?patente=X",
-                                         *PENDING_RESPONSES]})
+                                         "/api/dashboard/camiones?desde=YYYY-MM-DD&hasta=YYYY-MM-DD",
+                                         "/api/alertas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD",
+                                         "POST /api/chat", *PENDING_RESPONSES]})
             return
         if path in BUILDERS:
             # Resultados de Machine si existe una clasificación activa; si no, "pendiente".
-            result = cached_result(path)
+            result = builder_result(path)
             if result is None:
                 self.respond(503, {"status": "error", "error": "No se pudo calcular el mapa; se reintentará."})
                 return
@@ -545,6 +625,42 @@ class Handler(JsonHandler):
                 self.database_error(error)
                 return
             self.respond(200, result)
+            return
+        if path == "/api/alertas":
+            try:
+                desde = date.fromisoformat(_param(parsed.query, "desde") or "")
+                hasta = date.fromisoformat(_param(parsed.query, "hasta") or "")
+            except ValueError:
+                self.respond(400, {"error": "Usa ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD"})
+                return
+            if desde > hasta or (hasta - desde).days >= vigilancia_api.MAX_DIAS_HISTORIAL:
+                self.respond(400, {"error": f"Rango inválido (máximo {vigilancia_api.MAX_DIAS_HISTORIAL} días)"})
+                return
+            try:
+                with connect_db(read_timeout=30) as connection, connection.cursor() as cursor:
+                    result = vigilancia_api.alertas_rango(cursor, desde, hasta)
+            except pymysql.MySQLError as error:
+                self.database_error(error)
+                return
+            self.respond(200, result)
+            return
+        if path == "/api/dashboard/camiones":
+            try:
+                desde = date.fromisoformat(_param(parsed.query, "desde") or "")
+                hasta = date.fromisoformat(_param(parsed.query, "hasta") or "")
+            except ValueError:
+                self.respond(400, {"error": "Usa ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD"})
+                return
+            if desde > hasta or (hasta - desde).days > 400:
+                self.respond(400, {"error": "Rango inválido (máximo 400 días)"})
+                return
+            try:
+                with connect_db(read_timeout=30) as connection, connection.cursor() as cursor:
+                    result = dashboard_api.trucks_period(cursor, desde, hasta)
+            except pymysql.MySQLError as error:
+                self.database_error(error)
+                return
+            self.respond(200, result or {"status": "pending", "camiones": []})
             return
         truck = TRUCK_RE.fullmatch(path)
         if truck:
@@ -630,4 +746,5 @@ class Handler(JsonHandler):
 
 
 if __name__ == "__main__":
+    threading.Thread(target=keep_warm, daemon=True, name="cache").start()
     serve(Handler, "Endpoints")

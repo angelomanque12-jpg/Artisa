@@ -1,8 +1,8 @@
 """Servicio de cierre diario (00:00 hora Chile).
 
 Trabajo pesado una vez al día a la hora DIARIO_HORA (Chile, por defecto 00:30): cierra
-los días pendientes, recalcula los que recibieron reportes atrasados y actualiza la
-clasificación de rutas. Se puede lanzar a mano con --ahora. Entre medio, cada minuto
+los días pendientes, recalcula los que recibieron reportes atrasados y reentrena el modelo
+de rutas (machine_learning/modelo_rutas.py) con el día recién cerrado. Se puede lanzar a mano con --ahora. Entre medio, cada minuto
 solo actualiza el resumen "en curso" de hoy (liviano).
 
 1. Hoy: recalcula el resumen "en curso" cada DIARIO_HOY_CADA_MINUTOS.
@@ -27,7 +27,7 @@ from urllib.parse import urlsplit
 from common import dias
 from common.db import connect_db, initialize_db
 from common.http import JsonHandler, serve
-from machine_learning import prediccion, rutas_job
+from machine_learning import modelo_rutas
 from machine_learning.diario import VERSION_CALCULO, procesar_dia, quitar_no_camiones, ultimo_recibido
 
 
@@ -41,13 +41,9 @@ INTERVALO = 60
 # clasificar rutas. Vacío = continuo, como antes. Fuera de esa hora solo se actualiza "hoy".
 HORA_PROGRAMADA = os.environ.get("DIARIO_HORA", "00:30").strip()
 LOCK_NAME = "artisa_cierre_diario"
-PREDICCION_REVISADA = {"value": float("-inf")}  # revisar a lo más cada 15 min
+RUTAS_REVISADAS = {"value": float("-inf")}  # revisar a lo más cada 15 min
 STATE = {"estado": "iniciando", "error": None, "ultimo_ciclo": None, "dias_procesados": 0}
 HEARTBEAT = {"value": time.monotonic()}
-
-
-def _latido():
-    HEARTBEAT["value"] = time.monotonic()
 
 
 def _utc_now():
@@ -190,12 +186,12 @@ def toca_programado(utc_now, ultima_fecha):
 def publicar_rutas(connection, final=False):
     """Publica lo ya cerrado; durante la recuperación, como máximo cada cinco minutos."""
     with connection.cursor() as cursor:
-        recalcular = rutas_job.necesita_recalculo(cursor, horas_minimas=0 if final else 5 / 60)
+        recalcular = modelo_rutas.necesita_recalculo(cursor, horas_minimas=0 if final else 5 / 60)
     connection.commit()
     if recalcular:
         STATE["estado"] = "clasificando"
         HEARTBEAT["value"] = time.monotonic()
-        STATE["rutas"] = rutas_job.ejecutar(connection)
+        STATE["rutas"] = modelo_rutas.ejecutar(connection)
         HEARTBEAT["value"] = time.monotonic()
 
 
@@ -228,30 +224,24 @@ def ejecucion_completa(connection, utc_now):
         if terminado:
             break
         utc_now = _utc_now()
-    publicar_prediccion(connection, _utc_now())
     return total
 
 
-def publicar_prediccion(connection, utc_now):
-    """Reentrena la predicción de actividad si hay un cierre nuevo o cambió el catálogo de
-    camiones. Un fallo aquí no detiene el cierre diario."""
+def publicar_alertas(connection, utc_now):
+    """Alertas de ruta en vivo (Parte 8 del modelo). Un fallo aquí no detiene el cierre diario."""
     try:
-        with connection.cursor() as cursor:
-            calcular = prediccion.necesita_calculo(cursor, utc_now)
-        connection.commit()
-        if calcular:
-            STATE["estado"] = "prediciendo"
-            HEARTBEAT["value"] = time.monotonic()
-            # Contar 16 semanas puede tardar más que el límite de /health: cada día contado avisa.
-            STATE["prediccion"] = prediccion.ejecutar(connection, utc_now, latido=_latido)
-            HEARTBEAT["value"] = time.monotonic()
+        resultado = modelo_rutas.vigilar(connection, utc_now)
+        STATE["alertas"] = resultado or {"estado": "sin modelo de rutas"}
+        if resultado and (resultado["nuevas"] or resultado["cerradas"]):
+            print(f"Alertas: {resultado['nuevas']} nuevas, {resultado['cerradas']} cerradas"
+                  f" · {resultado.get('cortes', 0)} cortes de señal en curso o recientes", flush=True)
     except Exception as error:
         try:
             connection.rollback()
         except Exception:
             pass
-        STATE["prediccion"] = {"error": f"{type(error).__name__}: {error}"[:255]}
-        print(f"Predicción: no se pudo calcular ({STATE['prediccion']['error']})", flush=True)
+        STATE["alertas"] = {"error": f"{type(error).__name__}: {error}"[:255]}
+        print(f"Alertas: no se pudieron revisar ({STATE['alertas']['error']})", flush=True)
 
 
 def _con_bloqueo(connection, funcion, espera=0):
@@ -307,10 +297,13 @@ def loop():
                 else:
                     hecho = _con_bloqueo(connection, lambda: ciclo(connection, ahora, completo=False)) or []
                     STATE["dias_procesados"] += len(hecho)
-                    # Primera predicción (o un camión nuevo) sin esperar la hora programada.
-                    if not hecho and time.monotonic() - PREDICCION_REVISADA["value"] >= 900:
-                        PREDICCION_REVISADA["value"] = time.monotonic()
-                        _con_bloqueo(connection, lambda: publicar_prediccion(connection, ahora))
+                    # Primer modelo de rutas, día cerrado nuevo o método nuevo, sin esperar la
+                    # hora programada (necesita_recalculo es una consulta liviana).
+                    if not hecho and time.monotonic() - RUTAS_REVISADAS["value"] >= 900:
+                        RUTAS_REVISADAS["value"] = time.monotonic()
+                        _con_bloqueo(connection, lambda: publicar_rutas(connection, final=True))
+                # Cada minuto, haya o no trabajo programado: alertas de ruta en vivo.
+                publicar_alertas(connection, _utc_now())
             STATE.update(estado="ok", error=None, ultimo_ciclo=_utc_now().isoformat() + "Z")
         except Exception as error:  # MariaDB caída u otro fallo: se reintenta en el próximo ciclo
             STATE.update(estado="error", error=f"{type(error).__name__}: {error}"[:255])

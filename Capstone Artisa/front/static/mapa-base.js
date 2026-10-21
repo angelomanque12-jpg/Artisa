@@ -1,5 +1,5 @@
 // Mapa base común de Artisa: el mismo fondo y el mismo selector de capas en todos los mapas
-// (Mapa de rutas, Mapas de telemetría, Predicción y el día de cada camión).
+// (Rutas y alertas, Mapas de telemetría y el día de cada camión).
 //
 // - Fondos: Calles y lugares (OpenStreetMap) o Satélite (Esri, con nombres encima). Si el
 //   proveedor activo falla, se cambia solo al otro.
@@ -95,9 +95,11 @@
 
     const avisar = aviso || avisoEn(contenedor);
     mapa.createPane("mapaBaseFaenas").style.zIndex = "405";
+    const renderFaenas = L.svg({pane: "mapaBaseFaenas", padding: 0.5}).addTo(mapa);
+    renderFaenas._container.style.pointerEvents = "none";
     const capaFaenas = L.featureGroup();
     const capaDensidad = L.layerGroup();
-    capaFaenas.on("add", () => dibujarFaenas(capaFaenas, pedir, avisar));
+    capaFaenas.on("add", () => dibujarFaenas(capaFaenas, pedir, avisar, renderFaenas));
     capaDensidad.on("add", () => dibujarDensidad(mapa, capaDensidad, pedir, avisar));
     capaFaenas.addTo(mapa);
 
@@ -145,7 +147,7 @@
     };
   }
 
-  async function dibujarFaenas(capa, pedir, avisar) {
+  async function dibujarFaenas(capa, pedir, avisar, renderer) {
     if (capa.getLayers().length || capa._cargando) return;
     capa._cargando = true;
     try {
@@ -153,7 +155,8 @@
         const area = faena.area_m2 != null
           ? Math.round(faena.area_m2).toLocaleString("es-CL") + " m²" : "sin dato";
         const poligono = L.geoJSON(faena.geojson, {
-          pane: "mapaBaseFaenas", style: {color: "#2e7d32", weight: 2, fillOpacity: 0.18}
+          pane: "mapaBaseFaenas", renderer,
+          style: {color: "#2e7d32", weight: 2, fillOpacity: 0.18}
         }).bindTooltip(texto(faena.nombre), {sticky: true}).addTo(capa);
         L.marker(poligono.getBounds().getCenter(), {
           pane: "mapaBaseFaenas",

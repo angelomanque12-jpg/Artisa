@@ -1,5 +1,6 @@
 *
 !requirements.txt
+!README.md
 !common/
 !common/**
 !DB/

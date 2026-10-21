@@ -46,6 +46,8 @@ else:
             "RESPALDO_HORA=03:00\n"
             "RESPALDO_DIAS=3\n"
             "ARTISA_BIND=127.0.0.1\n"
+            "# Asistente de la web: clave gratuita de https://aistudio.google.com/apikey\n"
+            "GEMINI_API_KEY=\n"
         )
     print("Archivo .env creado con credenciales locales aleatorias.")
 

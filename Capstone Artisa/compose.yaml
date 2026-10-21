@@ -128,8 +128,18 @@ services:
       DIARIO_DESDE: ${DIARIO_DESDE:-}
       DIARIO_HORA: ${DIARIO_HORA-00:30}
       DIARIO_HOY_CADA_MINUTOS: ${DIARIO_HOY_CADA_MINUTOS:-10}
-      PRED_VENTANA_DIAS: ${PRED_VENTANA_DIAS:-112}
-      PRED_DIAS: ${PRED_DIAS:-15}
+      # Rutas aprendidas: se reaprenden con cada RUTAS_CADA_DIAS días cerrados nuevos (1 = cada día),
+      # con los últimos RUTAS_VENTANA_DIAS días, y valen como previsión de los próximos
+      # RUTAS_HORIZONTE_DIAS días. Hasta RUTAS_MAX_CAMIONES_MINIMA camiones = ruta mínima (N5).
+      RUTAS_VENTANA_DIAS: ${RUTAS_VENTANA_DIAS:-90}
+      RUTAS_CADA_DIAS: ${RUTAS_CADA_DIAS:-1}
+      RUTAS_HORIZONTE_DIAS: ${RUTAS_HORIZONTE_DIAS:-7}
+      RUTAS_MAX_CAMIONES_MINIMA: ${RUTAS_MAX_CAMIONES_MINIMA:-2}
+      # Alertas (Parte 8 del modelo): en N5 o N6 al menos estos reportes, minutos y km de
+      # distancia de una ruta N1–N4. Machine las guarda cada minuto en alertas_ruta.
+      VIGILANCIA_REPORTES: ${VIGILANCIA_REPORTES:-3}
+      VIGILANCIA_MIN_MINUTOS: ${VIGILANCIA_MIN_MINUTOS:-10}
+      VIGILANCIA_MIN_KM: ${VIGILANCIA_MIN_KM:-2}
     depends_on:
       mariadb:
         condition: service_healthy
@@ -148,6 +158,15 @@ services:
       COMPANY_API_INTERVAL_SECONDS: ${COMPANY_API_INTERVAL_SECONDS:-30}
       ARTISA_TIMEZONE: ${ARTISA_TIMEZONE:-America/Santiago}
       ETL_HISTORICO: ${ETL_HISTORICO:-1}
+      RUTAS_CADA_DIAS: ${RUTAS_CADA_DIAS:-1}
+      RUTAS_HORIZONTE_DIAS: ${RUTAS_HORIZONTE_DIAS:-7}
+      # Solo para mostrar la regla de las alertas en la web (las detecta machine-diario).
+      VIGILANCIA_MIN_MINUTOS: ${VIGILANCIA_MIN_MINUTOS:-10}
+      VIGILANCIA_MIN_KM: ${VIGILANCIA_MIN_KM:-2}
+      # Asistente (Gemini). La clave va solo en .env (GEMINI_API_KEY); sin clave, el chat avisa
+      # que no está configurado y el resto de la web sigue igual.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
     depends_on:
       mariadb:
         condition: service_healthy

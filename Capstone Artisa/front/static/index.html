@@ -6,21 +6,12 @@
   <title>Artisa · Transporte inteligente</title>
   <link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23163035'/%3E%3Cg transform='translate(7,7)scale(.1)'%3E%3Cpath d='M251,0C112,0,0,112,0,251c0,31,5,60,16,88L251,56l235,283c11-28,16-57,16-88C502,112,390,0,251,0Z' fill='%237ca727'/%3E%3Cpath d='M251,181L108,468Q251,536,394,468Z' fill='white'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <link rel="stylesheet" href="/mapa-base.css?v=20261015-dashboard2">
-<<<<<<< Updated upstream
-  <link rel="stylesheet" href="/style.css?v=20261015-dashboard2">
-=======
-  <link rel="stylesheet" href="/style.css?v=20261021-dashboard11">
->>>>>>> Stashed changes
+  <link rel="stylesheet" href="/mapa-base.css?v=20261021-datos-camion8">
+  <link rel="stylesheet" href="/style.css?v=20261021-datos-camion8">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js" defer></script>
-  <script src="/mapa-base.js?v=20261015-dashboard2" defer></script>
-  <script src="/map-data.js?v=20261015-dashboard2" defer></script>
-<<<<<<< Updated upstream
-  <script src="/app.js?v=20261015-dashboard2" defer></script>
-=======
-  <script src="/app.js?v=20261021-dashboard11" defer></script>
->>>>>>> Stashed changes
+  <script src="/mapa-base.js?v=20261021-datos-camion8" defer></script>
+  <script src="/app.js?v=20261021-datos-camion8" defer></script>
 </head>
 <body>
   <noscript>Activa JavaScript para iniciar sesión en Artisa.</noscript>
@@ -68,12 +59,12 @@
     <div class="nav-label">ESPACIO DE TRABAJO</div>
     <nav aria-label="Navegación principal">
       <a data-dataset-link="trucks" href="#camiones"><span>⛟</span> Camiones en vivo</a>
-      <a data-dataset-link="heatmap" href="#mapa-calor"><span>◉</span> Mapa de rutas</a>
-      <a data-dataset-link="prediction" href="#prediccion"><span>◈</span> Predicción</a>
+      <a data-dataset-link="prediction" href="#prediccion"><span>◈</span> Rutas y alertas</a>
+      <a data-dataset-link="heatmap" href="#mapa-calor"><span>◷</span> Datos históricos</a>
       <a data-dataset-link="dashboard" href="#dashboard"><span>▥</span> Dashboard</a>
       <a id="overview-link" href="#flujo"><span>▦</span> Arquitectura</a>
     </nav>
-    <div class="sidebar-note"><span class="dot"></span> Entorno local<p>Origen, transformación y análisis en un mismo proyecto.</p><span class="tag">TELEMETRÍA REAL</span></div>
+    <div class="sidebar-note"><span class="dot"></span> Telemetría real<p>Datos GPS de la flota de Transportes Artisa.</p></div>
   </aside>
   <main>
     <header class="topbar">
@@ -94,7 +85,7 @@
     <div id="notice" class="notice" role="status" hidden></div>
     <section id="flujo" class="panel pipeline">
       <div class="section-top"><div><span class="eyebrow">01 / ARQUITECTURA</span><h2>Todo conectado.</h2></div><span id="system-status" class="status neutral">Consultando servicios…</span></div>
-      <div class="origin"><span>ORIGEN GPS</span><strong id="origin-source">API de la empresa</strong><span>→</span><small>Lotes controlados e idempotentes</small></div>
+      <div class="origin"><span>ORIGEN GPS</span><strong id="origin-source">API de la empresa</strong><span>→</span><small>Cada 30 s, sin duplicados</small></div>
       <div class="flow">
         <article class="node etl" data-service="etl"><span class="node-number">01</span><h3>ETL</h3><p>Extrae, limpia y carga</p><span class="node-status">Consultando…</span></article>
         <div class="flow-arrow arrow-a" aria-hidden="true">→</div>
@@ -104,30 +95,29 @@
         <div class="flow-arrow arrow-c" aria-hidden="true">→</div>
         <article class="node front" data-service="front"><span class="node-number">05</span><h3>Frontend</h3><p>Visualiza y explora</p><span class="node-status">Consultando…</span></article>
         <div class="machine-link">↕ <span>Lee datos · guarda resultados</span></div>
-        <article class="node machine" data-service="machine"><span class="node-number">03</span><h3>Machine Learning</h3><p>Cierre diario y clasificación de rutas</p><span class="node-status">Consultando…</span></article>
-        <div class="flow-explanation"><strong>Servicios conectados.</strong><p>El ETL trae la telemetría de la API de la empresa a MariaDB. Machine cierra cada día y clasifica las rutas, y los endpoints entregan los resultados a esta pantalla.</p></div>
+        <article class="node machine" data-service="machine"><span class="node-number">03</span><h3>Machine Learning</h3><p>Cierre diario y rutas aprendidas</p><span class="node-status">Consultando…</span></article>
+        <div class="flow-explanation"><strong>Servicios conectados.</strong><p>La API de la empresa → MariaDB → Machine Learning (cierre diario y rutas) → esta web.</p></div>
       </div>
       <div class="pipeline-footer"><span id="last-sync">Esperando la primera carga…</span><span>Revisión automática cada minuto</span></div>
     </section>
     <nav class="dataset-tabs" aria-label="Espacios de análisis">
       <a class="dataset-tab" data-dataset-tab="trucks" href="#camiones"><span class="dataset-icon">⛟</span><span><strong>Camiones en vivo</strong><small>Dónde están y qué hicieron</small></span></a>
-      <a class="dataset-tab" data-dataset-tab="heatmap" href="#mapa-calor"><span class="dataset-icon">◉</span><span><strong>Mapa de rutas</strong><small>Rutas más y menos usadas</small></span></a>
-      <a class="dataset-tab" data-dataset-tab="prediction" href="#prediccion"><span class="dataset-icon">◈</span><span><strong>Predicción</strong><small>Próximos 15 días</small></span></a>
-      <a class="dataset-tab" data-dataset-tab="dashboard" href="#dashboard"><span class="dataset-icon">▥</span><span><strong>Dashboard</strong><small>Indicadores de la flota</small></span></a>
+      <a class="dataset-tab" data-dataset-tab="prediction" href="#prediccion"><span class="dataset-icon">◈</span><span><strong>Rutas y alertas</strong><small>Rutas previstas y camiones en vivo</small></span></a>
+      <a class="dataset-tab" data-dataset-tab="heatmap" href="#mapa-calor"><span class="dataset-icon">◷</span><span><strong>Datos históricos</strong><small>Mapas de días pasados</small></span></a>
+      <a class="dataset-tab" data-dataset-tab="dashboard" href="#dashboard"><span class="dataset-icon">▥</span><span><strong>Dashboard</strong><small>Datos por camión</small></span></a>
     </nav>
     <div id="camiones" class="dataset-space" data-dataset-view="trucks" hidden>
       <section class="panel trucks-panel" aria-labelledby="fleet-title">
         <div id="fleet-view">
           <div class="section-top">
-            <div><h2 id="fleet-title">Camiones en vivo</h2><p class="fleet-lede">Dónde está cada camión y qué hizo cada día. Elige uno para ver su recorrido, sus paradas y sus reportes.</p></div>
+            <div><h2 id="fleet-title">Camiones en vivo</h2><p class="fleet-lede">Dónde está cada camión y qué hizo cada día.</p></div>
             <span id="telemetry-status" class="status neutral">Conectando…</span>
           </div>
           <div id="telemetry-connection" class="telemetry-connection warning" role="status" aria-live="polite" hidden></div>
-          <p id="telemetry-pending" class="fleet-api-pending" role="status" hidden>La API de la empresa aún no está conectada: se muestran los datos históricos disponibles.</p>
+          <p id="telemetry-pending" class="fleet-api-pending" role="status" hidden>API de la empresa sin conectar: se muestran los datos guardados.</p>
           <div class="fleet-tabs" role="tablist" aria-label="Qué quieres ver">
             <button type="button" role="tab" class="fleet-tab" data-fleet-tab="flota" aria-selected="true" aria-controls="fleet-panel-flota"><strong>Camiones</strong><small id="fleet-tab-flota-note">Estado y actividad por día</small></button>
             <button type="button" role="tab" class="fleet-tab" data-fleet-tab="reportes" aria-selected="false" aria-controls="live-reports"><strong>Reportes en vivo</strong><small id="fleet-tab-reportes-note">Lo último que llegó de la API</small></button>
-            <button type="button" role="tab" class="fleet-tab" data-fleet-tab="mes" aria-selected="false" aria-controls="month-panel"><strong>Resumen del mes</strong><small>Un día por fila y descarga CSV</small></button>
           </div>
           <div id="fleet-panel-flota" class="fleet-panel" role="tabpanel">
           <div class="board-day">
@@ -156,20 +146,11 @@
           </div>
 
           <div class="fleet-panel" id="live-reports" role="tabpanel" hidden>
-            <p class="fleet-panel-head"><span id="telemetry-range">Se actualiza cada minuto</span> · <strong>Toca un reporte para ver el recorrido de ese camión y dónde estaba en ese momento.</strong></p>
+            <p class="fleet-panel-head"><span id="telemetry-range">Se actualiza cada minuto</span> · <strong>Toca un reporte para verlo en el mapa.</strong></p>
             <div id="telemetry-content">
               <p class="fleet-more-note"><strong id="telemetry-count">—</strong> reportes guardados · <strong id="vehicle-count">—</strong> <span id="vehicle-count-note">camiones con reportes en las últimas 24 h</span> · <span id="telemetry-quality"></span></p>
               <div class="table-scroll telemetry-table"><table><thead><tr><th>Vehículo</th><th>Fecha (hora Chile)</th><th>Evento</th><th>Coordenadas</th><th class="col-ignition">Encendido</th></tr></thead><tbody id="telemetry-rows"><tr><td colspan="5" class="empty">Cargando telemetría…</td></tr></tbody></table></div>
             </div>
-          </div>
-          <div class="fleet-panel" id="month-panel" role="tabpanel" hidden>
-            <p class="fleet-panel-head">Elige un mes: toca un día para ver qué hizo cada camión, o descarga el CSV con el detalle de cada camión y día.</p>
-            <div class="history-month-actions">
-              <input type="month" id="history-month" aria-label="Mes a consultar">
-              <button type="button" class="button secondary" id="history-month-download">↓ Descargar CSV del mes</button>
-            </div>
-            <p id="history-month-download-status" class="history-download-status" aria-live="polite"></p>
-            <div class="table-scroll telemetry-table"><table><thead><tr><th>Día</th><th>Estado</th><th>Camiones</th><th>Reportes</th><th>Km observados</th></tr></thead><tbody id="history-month-rows"></tbody></table></div>
           </div>
         </div>
         <div id="truck-view" hidden>
@@ -237,342 +218,207 @@
     <div id="dashboard" class="dataset-space" data-dataset-view="dashboard" hidden>
       <section class="panel dashboard-panel fd" aria-labelledby="dashboard-title">
         <div class="section-top">
-          <div><span class="eyebrow">PANEL DE FLOTA</span><h2 id="dashboard-title">Dashboard de la flota</h2></div>
-          <span id="dashboard-snapshot" class="status neutral">Preparando indicadores…</span>
+          <div><span class="eyebrow">DASHBOARD</span><h2 id="dashboard-title">Datos por camión</h2></div>
+          <span id="dashboard-snapshot" class="status neutral">Preparando…</span>
         </div>
-<<<<<<< Updated upstream
-        <div class="fd-tabs" role="tablist" aria-label="Vista del dashboard">
-          <button type="button" class="fd-tab is-active" role="tab" aria-selected="true" data-dash-tab="global"><strong>Datos globales</strong><small>Rutas clasificadas, zonas y estado de la flota</small></button>
-          <button type="button" class="fd-tab" role="tab" aria-selected="false" data-dash-tab="detalle"><strong>Datos detallados</strong><small>Reportes y km por patente, del mes o de todos los meses</small></button>
+        <p class="telemetry-intro">Arriba todos los camiones con sus filtros; abajo las anomalías de toda la flota en el mes que elijas. Toca un camión en cualquier parte para ver su detalle día por día.</p>
+        <div class="db-toolbar">
+          <label class="db-field"><span>Período de la tabla</span><select id="db-period" aria-label="Período de la tabla"></select></label>
         </div>
+        <p class="db-note" id="db-note" aria-live="polite"></p>
 
-        <div id="dash-global" role="tabpanel" aria-label="Datos globales">
-          <p class="telemetry-intro">Resumen de las rutas clasificadas y del estado de la flota. Se actualiza junto con el mapa de rutas.</p>
-          <div class="dashboard-kpis fd-kpis" aria-label="Indicadores globales">
-            <article><span>Reportes disponibles</span><strong id="dg-reports">—</strong><small>Telemetría conservada en MariaDB</small></article>
-            <article><span>Recorridos analizados</span><strong id="dg-trips">—</strong><small id="dg-trips-d">Dentro de la ventana de la clasificación</small></article>
-            <article><span>Rutas identificadas</span><strong id="dg-routes">—</strong><small><span class="fd-levelbar" aria-hidden="true"><i class="high" id="dg-bar-high"></i><i class="medium" id="dg-bar-medium"></i><i class="low" id="dg-bar-low"></i></span></small></article>
-            <article><span>Camiones con señal</span><strong id="dg-signal">—</strong><small id="dg-signal-d">Según la última posición</small></article>
+        <div class="db-table-head">
+          <h3 class="db-table-title" id="db-table-title">Todos los camiones</h3>
+          <div class="db-toggle" role="group" aria-label="Qué mostrar en la tabla">
+            <button type="button" data-db-view="periodo" class="is-active" aria-pressed="true">Resumen del período</button>
+            <button type="button" data-db-view="meses" aria-pressed="false">Mes a mes</button>
           </div>
-          <article class="dashboard-card fd-zones">
-            <div class="dashboard-card-heading"><div><span class="eyebrow">ACTIVIDAD GEOGRÁFICA</span><h3>Uso de rutas por zona</h3></div><span class="fd-chip" id="dg-top-zone">—</span></div>
-            <p>Recorridos de cada ruta, contados en la zona donde queda su punto central.</p>
-            <div id="dg-zones" class="fd-zone-list"><span class="chart-empty">Cargando zonas…</span></div>
-          </article>
-          <div class="fd-pair">
-            <article class="dashboard-card">
-              <div class="dashboard-card-heading"><div><span class="eyebrow">CLASIFICACIÓN</span><h3>Nivel de uso de rutas</h3></div></div>
-              <p>Verde para las más usadas, naranja para uso medio y rojo para poco uso.</p>
-              <div id="dg-levels" class="fd-donut-wrap" aria-label="Distribución de rutas por nivel de uso"></div>
-            </article>
-            <article class="dashboard-card">
-              <div class="dashboard-card-heading"><div><span class="eyebrow">FLOTA ACTUAL</span><h3>Disponibilidad de los vehículos</h3></div></div>
-              <p>Estado de señal y encendido según la última posición disponible.</p>
-              <div id="dg-fleet" class="fd-donut-wrap" aria-label="Distribución del estado de la flota"></div>
-            </article>
+          <div class="db-toggle" id="db-month-metric" role="group" aria-label="Qué contar mes a mes" hidden>
+            <button type="button" data-db-month-metric="reportes" class="is-active" aria-pressed="true">Reportes</button>
+            <button type="button" data-db-month-metric="km" aria-pressed="false">Km</button>
           </div>
-          <article class="dashboard-card fd-ranking">
-            <div class="dashboard-card-heading"><div><span class="eyebrow">RANKING OPERATIVO</span><h3>Rutas con mayor actividad</h3></div><span class="chart-unit">Top 8</span></div>
-            <p>Recorridos por ruta completa; el color es su clasificación global. Toca una ruta para verla en el mapa.</p>
-            <ol id="dg-ranking" class="fd-rank-list"><li class="chart-empty">Calculando ranking…</li></ol>
-          </article>
-          <div class="dashboard-method"><strong>Cómo se definen las zonas</strong><span id="dg-method">Se calculan con las rutas clasificadas.</span></div>
+          <label class="fd-search db-search"><span>⌕</span><input id="db-search" type="search" placeholder="Buscar patente o camión…" aria-label="Buscar patente o camión"></label>
         </div>
+        <div class="db-table-filters">
+          <div class="db-filters" id="db-filters" role="group" aria-label="Filtrar camiones"></div>
+          <label class="db-field db-field-small"><span>Días con datos</span><select id="db-min-days" aria-label="Mínimo de días con datos">
+            <option value="0">Todos</option><option value="5">5 o más</option><option value="10">10 o más</option><option value="15">15 o más</option></select></label>
+          <label class="db-field db-field-small"><span>Recorrido mínimo</span><select id="db-min-km" aria-label="Recorrido mínimo">
+            <option value="0">Sin mínimo</option><option value="100">100 km</option><option value="500">500 km</option><option value="1000">1.000 km</option></select></label>
+        </div>
+        <div class="db-downloads" aria-label="Descargar en Excel">
+          <span class="db-downloads-title">Descargar en Excel (CSV)<small>Con el período, los filtros y la búsqueda que tengas ahora</small></span>
+          <button type="button" id="db-csv" class="db-download"><strong>↓ Tabla por camión</strong><small id="db-csv-note">Una fila por camión con sus cifras del período</small></button>
+          <button type="button" id="db-csv-days" class="db-download"><strong id="db-csv-days-label">↓ Detalle día por día</strong><small>Una fila por camión y día: reportes, km, paradas, tiempo detenido y hora del primer y último reporte</small></button>
+        </div>
+        <div class="fd-table-wrap" id="db-table-wrap"><table id="db-table" class="fd-table db-table"></table></div>
+        <small class="fd-foot" id="db-foot"></small>
 
-        <div id="dash-detail" role="tabpanel" aria-label="Datos detallados" hidden>
-          <p class="telemetry-intro">Reportes GPS y kilómetros de cada camión, desde el primer día con datos. Sale del cierre diario (00:00 a 00:00, hora de Chile); el mes en curso suma hasta hoy.</p>
-          <div class="fd-filters">
-            <div class="fd-periods" id="dash-periods" role="group" aria-label="Período"></div>
-            <div class="fd-metric" role="group" aria-label="Qué medir">
-              <span>Medir</span>
-              <button type="button" class="is-active" data-dash-metric="reportes" aria-pressed="true">Reportes</button>
-              <button type="button" data-dash-metric="km" aria-pressed="false">Km</button>
-            </div>
-          </div>
-          <div class="dashboard-kpis fd-kpis fd-kpis-3" aria-label="Totales del período">
-            <article><span>Reportes GPS</span><strong id="dash-k-reportes">—</strong><small id="dash-k-reportes-d">—</small></article>
-            <article><span>Km observados</span><strong id="dash-k-km">—</strong><small id="dash-k-km-d">—</small></article>
-            <article><span>Camiones con datos</span><strong id="dash-k-activos">—</strong><small id="dash-k-activos-d">—</small></article>
-          </div>
-          <article class="dashboard-card fd-months">
-            <div class="dashboard-card-heading"><div><span class="eyebrow" id="dash-chart-eyebrow">MES A MES</span><h3 id="dash-months-title">Reportes de la flota por mes</h3></div><span class="chart-unit" id="dash-months-unit">Toca un mes</span></div>
-            <div id="dash-months" class="fd-month-chart" aria-label="Total de la flota en el período"><span class="chart-empty">Cargando…</span></div>
-          </article>
-          <div class="fd-layout">
-            <article class="dashboard-card fd-table-card">
-              <div class="dashboard-card-heading">
-                <div><span class="eyebrow">POR PATENTE</span><h3 id="dash-table-title">Reportes por camión</h3></div>
-                <button type="button" id="dash-csv" class="fd-csv">↓ Descargar CSV</button>
-              </div>
-              <div class="fd-tools">
-                <label class="fd-search"><span>⌕</span><input id="dash-search" type="search" placeholder="Buscar patente o camión…" aria-label="Buscar patente o camión"></label>
-                <label class="fd-sort">Ordenar <select id="dash-sort" aria-label="Ordenar camiones"></select></label>
-              </div>
-              <div class="fd-table-wrap"><table id="dash-table" class="fd-table" aria-describedby="dash-table-foot"></table></div>
-              <small class="fd-foot" id="dash-table-foot">Toca un camión para ver su calendario día por día.</small>
-            </article>
-            <aside class="fd-side">
-              <article class="dashboard-card fd-silent">
-                <div class="dashboard-card-heading"><div><span class="eyebrow">ATENCIÓN</span><h3>Camiones sin reportar</h3></div><b id="dash-silent-count" class="fd-count">—</b></div>
-                <p id="dash-silent-note">Sin reportes ni ayer ni hoy.</p>
-                <ul id="dash-silent" class="fd-silent-list"></ul>
-              </article>
-              <article class="dashboard-card fd-quality">
-                <div class="dashboard-card-heading"><div><span class="eyebrow">CALIDAD DE DATOS</span><h3>Días procesados</h3></div></div>
-                <div class="fd-meter" aria-hidden="true"><i id="dash-q-bar"></i></div>
-                <ul id="dash-quality" class="fd-quality-list"></ul>
-              </article>
-            </aside>
-          </div>
-=======
-        <div id="dash-global" role="tabpanel" aria-label="Datos globales">
-          <p class="telemetry-intro">Revisa la actividad mensual y los camiones que necesitan atención en una vista de solo lectura.</p>
-          <article class="dashboard-card fd-live-summary fd-live-attention-card">
-            <div class="fd-live-attention-head"><div><span class="eyebrow">ATENCIÓN</span><h3>Camiones que conviene revisar</h3></div><b id="dg-live-alert-count" class="fd-count">—</b></div>
-            <p>Vehículos sin una señal reciente.</p>
-            <ul id="dg-live-alerts" class="fd-silent-list"><li class="chart-empty">Consultando la flota…</li></ul>
-          </article>
-
-          <article class="dashboard-card fd-overview-activity">
-            <div class="dashboard-card-heading fd-activity-heading">
-              <div><span class="eyebrow">ACTIVIDAD DEL MES</span><h3 id="dg-activity-title">Evolución diaria de la flota</h3></div>
-              <div class="fd-section-tools">
-                <label class="fd-section-filter" for="dg-activity-month"><span>Período</span><select id="dg-activity-month" data-dashboard-month="activity" aria-label="Mes del gráfico de actividad"></select></label>
-                <label class="fd-section-filter" for="dg-activity-order"><span>Orden de los días</span><select id="dg-activity-order" aria-label="Orden de los días"><option value="asc">Más antiguo primero</option><option value="desc">Más reciente primero</option></select></label>
-                <label class="fd-section-filter" for="dg-activity-day-type"><span>Tipo de día</span><select id="dg-activity-day-type" aria-label="Tipo de día"><option value="all">Todos los días</option><option value="weekdays">Lunes a viernes</option><option value="weekends">Fines de semana</option></select></label>
-                <div class="fd-metric fd-overview-metrics" role="group" aria-label="Indicador del gráfico diario">
-                  <span>Ver:</span>
-                  <button type="button" data-dash-overview-metric="km" aria-pressed="true" class="is-active">Km</button>
-                  <button type="button" data-dash-overview-metric="reportes" aria-pressed="false">Reportes</button>
-                  <button type="button" data-dash-overview-metric="camiones" aria-pressed="false">Camiones</button>
-                  <button type="button" data-dash-overview-metric="paradas" aria-pressed="false">Paradas</button>
-                  <button type="button" data-dash-overview-metric="detenido" aria-pressed="false">Tiempo detenido</button>
-                </div>
+        <div class="db-section-head">
+          <div><h3 class="db-table-title" id="db-anom-title">Anomalías</h3>
+            <span>Toda la flota: no les aplican los filtros de la tabla</span></div>
+          <label class="db-field"><span>Mes</span><select id="db-anom-period" aria-label="Mes de las anomalías"></select></label>
+        </div>
+        <div class="db-findings" id="db-findings" aria-label="Camiones que más se salen de lo normal"></div>
+        <div class="db-pair">
+          <article class="dashboard-card db-rank-card">
+            <div class="db-rank-head">
+              <div><span class="eyebrow">COMPARACIÓN POR CAMIÓN</span><h3 id="db-rank-title">Camiones con más paradas</h3></div>
+              <div class="db-toggle" role="group" aria-label="Qué comparar">
+                <button type="button" data-db-rank="paradas" class="is-active" aria-pressed="true">Paradas</button>
+                <button type="button" data-db-rank="detenido" aria-pressed="false">Tiempo detenido</button>
+                <button type="button" data-db-rank="km" aria-pressed="false">Km</button>
               </div>
             </div>
-            <p id="dg-activity-note">Cada barra representa un día.</p>
-            <div id="dg-activity-chart" class="fd-overview-chart" role="group" aria-label="Actividad diaria del mes"><span class="chart-empty">Cargando actividad…</span></div>
-            <div id="dg-activity-insights" class="fd-activity-insights" aria-live="polite"></div>
-          </article>
-
-          <div class="dashboard-kpis fd-kpis" aria-label="Resultados operativos del mes">
-            <article><span>Kilómetros recorridos</span><strong id="dg-ops-km">—</strong><small id="dg-ops-km-note">Acumulado del mes</small></article>
-            <article><span>Paradas registradas</span><strong id="dg-ops-stops">—</strong><small id="dg-ops-stops-note">Paradas de 10 minutos o más</small></article>
-            <article><span>Tiempo detenido</span><strong id="dg-ops-stopped">—</strong><small id="dg-ops-stopped-note">Suma de todos los camiones</small></article>
-          </div>
-
-          <div class="fd-pair fd-operations-pair">
-            <article class="dashboard-card fd-ops-ranking-card">
-              <div class="dashboard-card-heading fd-activity-heading">
-                <div><span class="eyebrow">COMPARACIÓN POR CAMIÓN</span><h3 id="dg-ops-ranking-title">Camiones con más paradas</h3></div>
-                <div class="fd-section-tools">
-                  <label class="fd-section-filter" for="dg-ranking-month"><span>Período</span><select id="dg-ranking-month" data-dashboard-month="ranking" aria-label="Mes del ranking de camiones"></select></label>
-                  <div class="fd-metric fd-ops-metrics" role="group" aria-label="Indicador del ranking de camiones">
-                    <button type="button" class="is-active" data-dash-rank-metric="paradas" aria-pressed="true">Paradas</button>
-                    <button type="button" data-dash-rank-metric="detenido" aria-pressed="false">Tiempo detenido</button>
-                    <button type="button" data-dash-rank-metric="km" aria-pressed="false">Km</button>
-                  </div>
-                </div>
-              </div>
-              <p id="dg-ops-ranking-note">Permite detectar vehículos que se detienen con mayor frecuencia.</p>
-              <div class="fd-ranking-filters" aria-label="Filtros de la comparación por camión">
-                <label class="fd-section-filter" for="dg-ranking-order"><span>Ordenar</span><select id="dg-ranking-order" aria-label="Orden del ranking"><option value="desc">Mayor valor primero</option><option value="asc">Menor valor primero</option></select></label>
-                <label class="fd-section-filter" for="dg-ranking-days"><span>Días activos</span><select id="dg-ranking-days" aria-label="Mínimo de días activos del ranking"><option value="0">Todos</option><option value="5">Al menos 5 días</option><option value="10">Al menos 10 días</option><option value="15">Al menos 15 días</option></select></label>
-                <label class="fd-section-filter" for="dg-ranking-limit"><span>Mostrar</span><select id="dg-ranking-limit" aria-label="Cantidad de camiones del ranking"><option value="8">8 camiones</option><option value="15">15 camiones</option><option value="0">Todos</option></select></label>
-                <label class="fd-section-filter fd-filter-search" for="dg-ranking-search"><span>Buscar camión</span><input id="dg-ranking-search" type="search" placeholder="Patente o nombre…" aria-label="Buscar camión en el ranking"></label>
-              </div>
-              <div id="dg-ops-ranking" class="dashboard-bars fd-ops-ranking"><span class="chart-empty">Calculando el ranking…</span></div>
-              <p id="dg-ranking-summary" class="fd-filter-summary" aria-live="polite"></p>
-            </article>
-
-            <article class="dashboard-card fd-efficiency-card">
-              <div class="dashboard-card-heading"><div><span class="eyebrow">EFICIENCIA POR CAMIÓN</span><h3 id="dg-efficiency-title">Tiempo detenido por cada 100 km</h3></div></div>
-              <p id="dg-efficiency-note">Compara cuánto tiempo permanece detenido cada camión en relación con su recorrido.</p>
-              <div class="fd-efficiency-filters" aria-label="Filtros del gráfico de eficiencia">
-                <label class="fd-section-filter" for="dg-efficiency-month"><span>Período</span><select id="dg-efficiency-month" data-dashboard-month="efficiency" aria-label="Mes del gráfico de eficiencia"></select></label>
-                <label class="fd-section-filter" for="dg-efficiency-order"><span>Ordenar</span><select id="dg-efficiency-order" aria-label="Orden del gráfico de eficiencia"><option value="rate-desc">Mayor detención</option><option value="rate-asc">Menor detención</option><option value="days-desc">Más días activos</option><option value="days-asc">Menos días activos</option></select></label>
-                <label class="fd-section-filter" for="dg-efficiency-days"><span>Días activos</span><select id="dg-efficiency-days" aria-label="Mínimo de días con actividad"><option value="0">Todos</option><option value="5">Al menos 5 días</option><option value="10">Al menos 10 días</option><option value="15">Al menos 15 días</option></select></label>
-                <label class="fd-section-filter" for="dg-efficiency-min-km"><span>Recorrido mínimo</span><select id="dg-efficiency-min-km" aria-label="Recorrido mínimo"><option value="0">Sin mínimo</option><option value="100" selected>100 km</option><option value="500">500 km</option><option value="1000">1.000 km</option></select></label>
-                <label class="fd-section-filter" for="dg-efficiency-limit"><span>Mostrar</span><select id="dg-efficiency-limit" aria-label="Cantidad de camiones visibles"><option value="10" selected>10 camiones</option><option value="20">20 camiones</option><option value="0">Todos</option></select></label>
-                <label class="fd-section-filter fd-efficiency-search" for="dg-efficiency-search"><span>Buscar camión</span><input id="dg-efficiency-search" type="search" placeholder="Patente o nombre…" aria-label="Buscar camión en el gráfico de eficiencia"></label>
-              </div>
-              <div class="fd-efficiency-guide"><span><i></i> Menor detención relativa</span><span class="is-warning"><i></i> Valores que conviene revisar</span><strong>Menor es mejor</strong></div>
-              <div id="dg-efficiency-chart" class="dashboard-bars fd-efficiency-ranking" role="group" aria-label="Ranking de minutos detenidos por cada 100 kilómetros"><span class="chart-empty">Preparando comparación…</span></div>
-              <p id="dg-efficiency-summary" class="fd-efficiency-summary" aria-live="polite"></p>
-            </article>
-          </div>
-
-          <article class="dashboard-card fd-operational-findings">
-            <div class="dashboard-card-heading"><div><span class="eyebrow">HALLAZGOS DEL MES</span><h3>Qué conviene revisar primero</h3></div></div>
-            <p>Estos resultados comparan a los camiones con actividad en el período y sirven como punto de partida para una revisión operativa.</p>
-            <div class="fd-findings-filters" aria-label="Filtros de los hallazgos del mes">
-              <label class="fd-section-filter" for="dg-findings-month"><span>Período</span><select id="dg-findings-month" data-dashboard-month="findings" aria-label="Mes de los hallazgos operativos"></select></label>
-              <label class="fd-section-filter" for="dg-findings-days"><span>Días activos</span><select id="dg-findings-days" aria-label="Mínimo de días activos de los hallazgos"><option value="0">Todos</option><option value="5">Al menos 5 días</option><option value="10">Al menos 10 días</option><option value="15">Al menos 15 días</option></select></label>
-              <label class="fd-section-filter" for="dg-findings-min-km"><span>Recorrido mínimo</span><select id="dg-findings-min-km" aria-label="Recorrido mínimo de los hallazgos"><option value="0">Sin mínimo</option><option value="100" selected>100 km</option><option value="500">500 km</option><option value="1000">1.000 km</option></select></label>
+            <div class="db-rank-tools">
+              <label class="db-field db-field-small"><span>Orden</span><select id="db-rank-order" aria-label="Orden de la comparación">
+                <option value="desc">Mayor primero</option><option value="asc">Menor primero</option></select></label>
+              <label class="db-field db-field-small"><span>Mostrar</span><select id="db-rank-limit" aria-label="Cuántos camiones mostrar">
+                <option value="8">8 camiones</option><option value="15">15 camiones</option><option value="0">Todos</option></select></label>
             </div>
-            <div id="dg-operational-insights" class="fd-finding-grid"><span class="chart-empty">Analizando la actividad…</span></div>
-            <p id="dg-findings-summary" class="fd-filter-summary" aria-live="polite"></p>
+            <div id="db-rank" class="dashboard-bars db-bars"></div>
+            <button type="button" class="db-more" data-db-sort="paradas" id="db-rank-more">Ver todos en la tabla ↑</button>
           </article>
-
-          <div class="fd-pair fd-history-pair">
-            <article class="dashboard-card fd-history-card">
-              <div class="dashboard-card-heading fd-history-heading">
-                <div><span class="eyebrow">HISTORIAL ACUMULADO</span><h3>Evolución mes a mes</h3></div>
-                <button type="button" id="dash-history-csv" class="fd-csv">↓ Descargar comparación histórica</button>
-              </div>
-              <p id="dash-history-range">Comparación desde abril de 2026 hasta la actualidad.</p>
-              <div class="fd-metric fd-history-selector" role="group" aria-label="Indicador del historial acumulado">
-                <span>Ver:</span>
-                <button type="button" class="is-active" data-dash-history-metric="reportes" aria-pressed="true">Reportes</button>
-                <button type="button" data-dash-history-metric="km" aria-pressed="false">Km</button>
-              </div>
-              <div id="dg-history-chart" class="dashboard-bars fd-history-chart"><span class="chart-empty">Preparando historial…</span></div>
-            </article>
-            <article class="dashboard-card fd-quality">
-              <div class="dashboard-card-heading"><div><span class="eyebrow">CALIDAD DE DATOS</span><h3>Días procesados</h3></div></div>
-              <p>Comprueba los cierres y registros descartados desde abril de 2026 hasta la actualidad.</p>
-              <div class="fd-meter" aria-hidden="true"><i id="dash-q-bar"></i></div>
-              <ul id="dash-quality" class="fd-quality-list"><li class="chart-empty">Revisando los cierres…</li></ul>
-            </article>
-          </div>
-
-          <article class="dashboard-card fd-daily-report fd-consolidated-report">
-            <div class="dashboard-card-heading fd-daily-heading">
-              <div><span class="eyebrow">INFORME MENSUAL</span><h3>Detalle diario y descarga</h3></div>
-              <div class="history-month-actions">
-                <label class="history-month-field"><span>Mes</span><input type="month" id="history-month" min="2026-04" aria-label="Mes a consultar"></label>
-                <button type="button" class="fd-csv" id="history-month-download">↓ Descargar informe completo</button>
-              </div>
+          <article class="dashboard-card db-rank-card">
+            <div class="db-rank-head"><div><span class="eyebrow">MENOS REPORTES</span><h3 id="db-low-title">Camiones que menos reportaron</h3></div></div>
+            <p class="db-rank-note" id="db-low-note">Comparados con la mediana de la flota en el período: la barra completa es lo normal.</p>
+            <div class="db-rank-tools">
+              <label class="db-field db-field-small"><span>Mostrar</span><select id="db-low-limit" aria-label="Cuántos camiones mostrar">
+                <option value="8">8 camiones</option><option value="15">15 camiones</option><option value="0">Todos</option></select></label>
             </div>
-            <p>Consulta los valores exactos de cada día. El CSV incluye una fila por camión y día con reportes, kilómetros, paradas y tiempo detenido.</p>
-            <p id="history-month-download-status" class="history-download-status" aria-live="polite"></p>
-            <div class="table-scroll telemetry-table fd-daily-table"><table><thead><tr><th>Día</th><th>Estado</th><th>Camiones</th><th>Reportes</th><th>Km observados</th><th>Paradas</th></tr></thead><tbody id="history-month-rows"></tbody></table></div>
+            <div id="db-low" class="dashboard-bars db-bars"></div>
+            <button type="button" class="db-more" data-db-sort="reportes" data-db-dir="1">Ver todos en la tabla ↑</button>
           </article>
-          <div class="dashboard-method"><strong>Cómo leer estos datos</strong><span>Se calculan con kilómetros, reportes GPS, paradas y minutos detenidos ya guardados por camión y día. No incluyen combustible porque la fuente actual no informa litros ni cargas.</span></div>
->>>>>>> Stashed changes
         </div>
       </section>
     </div>
     <div id="mapa-calor" class="dataset-space" data-dataset-view="heatmap" hidden>
-      <section class="panel heatmap-panel atlas" aria-labelledby="atlas-title">
+      <section class="panel heatmap-panel atlas history-panel" aria-labelledby="history-title">
         <div class="atlas-head">
-          <div><h2 id="atlas-title">Mapa de rutas</h2><p id="heatmap-intro" class="atlas-lede">Consultando la clasificación…</p></div>
+          <div><h2 id="history-title">Datos históricos</h2><p class="atlas-lede">Cómo se movió la flota en días pasados. Lo que pasa ahora está en Rutas y alertas.</p></div>
+          <a class="status info history-live-link" href="#prediccion">Ver en vivo →</a>
+        </div>
+        <div id="explorer-routes" class="explorer-frame-wrap">
+          <iframe title="Mapas de telemetría histórica" data-explorer-frame="/exploracion-gps" referrerpolicy="no-referrer"></iframe>
+        </div>
+      </section>
+    </div>
+    <div id="prediccion" class="dataset-space" data-dataset-view="prediction" hidden>
+      <section class="panel heatmap-panel atlas learned-panel" aria-labelledby="atlas-title">
+        <div class="atlas-head">
+          <div><span class="eyebrow">MACHINE LEARNING</span><h2 id="atlas-title">Rutas previstas y alertas</h2><p id="heatmap-intro" class="atlas-lede">Las rutas que el modelo prevé para los próximos 7 días y los camiones en vivo. Hay alerta si un camión sale de las rutas habituales.</p></div>
           <span id="heatmap-source-status" class="status info">Cargando…</span>
         </div>
-        <div class="atlas-modes map-view-selector" role="tablist" aria-label="Qué estudiar">
-          <button type="button" class="atlas-mode" data-map-mode="classified" aria-pressed="true"><strong>Rutas clasificadas</strong><small>Rutas completas por nivel de uso y dónde está cada camión</small></button>
-          <button type="button" class="atlas-mode" data-map-mode="historical" aria-pressed="false"><strong>Mapas de telemetría</strong><small id="map-view-description">Reportes GPS guardados por día o rango</small></button>
-        </div>
-        <div class="atlas-stats" id="atlas-stats" aria-label="Resumen del período analizado">
-          <div class="atlas-stat"><span>Período</span><strong id="geo-model-zones">—</strong><small id="geo-model-detail" hidden></small></div>
-          <div class="atlas-stat"><span>Recorridos</span><strong id="heatmap-trips">—</strong></div>
-          <div class="atlas-stat atlas-levels"><span>Rutas <b id="heatmap-routes">—</b></span>
-            <div class="level-bar" aria-hidden="true"><i class="high" data-level-bar="HIGH"></i><i class="medium" data-level-bar="MEDIUM"></i><i class="low" data-level-bar="LOW"></i></div>
-          </div>
-          <div class="atlas-stat"><span>Camiones</span><strong id="heatmap-vehicles">—</strong></div>
-          <button type="button" class="atlas-stat atlas-pick most" id="most-route-card"><span>Ruta más usada</span><strong id="most-route">—</strong><small id="most-route-usage">—</small></button>
-          <button type="button" class="atlas-stat atlas-pick least" id="least-route-card"><span>Ruta menos usada</span><strong id="least-route">—</strong><small id="least-route-usage">—</small></button>
+        <div class="atlas-stats vg-stats" id="atlas-stats" aria-label="Resumen del modelo y de la flota en vivo">
+          <div class="atlas-stat"><span>Previsión</span><strong id="vg-model">—</strong><small id="vg-model-d">—</small></div>
+          <div class="atlas-stat"><span>Rutas aprendidas</span><strong id="vg-routes">—</strong><small id="vg-routes-d">—</small></div>
+          <div class="atlas-stat"><span>En movimiento ahora</span><strong id="vg-moving">—</strong><small id="vg-moving-d">—</small></div>
+          <div class="atlas-stat"><span>Último dato</span><strong id="vg-last">—</strong><small id="vg-last-d">—</small></div>
+          <button type="button" class="atlas-stat atlas-pick vg-alert-card" id="vg-alerts-card"><span>Alertas activas</span><strong id="vg-alerts">—</strong><small id="vg-alerts-d">—</small></button>
         </div>
         <div class="heatmap-layout atlas-stage">
           <article class="map-card">
-            <div class="map-view-stage">
-              <div id="explorer-routes" class="explorer-frame-wrap" hidden>
-                <iframe title="Mapas de telemetría histórica" data-explorer-frame="/exploracion-gps" referrerpolicy="no-referrer"></iframe>
-              </div>
-              <div id="heatmap-map" class="heatmap-map" role="application" aria-label="Mapa interactivo de rutas históricas y camiones"><span class="map-loading">Cargando las rutas clasificadas…</span></div>
-            </div>
+            <div id="heatmap-map" class="heatmap-map" role="application" aria-label="Mapa de las rutas aprendidas con los camiones en vivo"><span class="map-loading">Cargando las rutas aprendidas…</span></div>
             <div class="atlas-toolbar route-filter-panel">
-              <div class="route-filter-actions" role="group" aria-label="Filtrar rutas por nivel de uso">
-                <button type="button" class="route-filter is-active" data-route-filter="ALL" aria-pressed="true">Todas <b data-route-count="ALL">—</b></button>
-                <button type="button" class="route-filter high" data-route-filter="HIGH" aria-pressed="false"><i></i>Más usadas <b data-route-count="HIGH">—</b></button>
-                <button type="button" class="route-filter medium" data-route-filter="MEDIUM" aria-pressed="false"><i></i>Uso medio <b data-route-count="MEDIUM">—</b></button>
-                <button type="button" class="route-filter low" data-route-filter="LOW" aria-pressed="false"><i></i>Poco usadas <b data-route-count="LOW">—</b></button>
+              <div class="route-filter-actions" role="group" aria-label="Qué resaltar">
+                <button type="button" class="route-filter is-active" data-zone-filter="all" aria-pressed="true">Todas las rutas</button>
+                <button type="button" class="route-filter low" data-zone-filter="rare" aria-pressed="false"><i></i>Resaltar rutas mínimas (N5)</button>
               </div>
               <div class="map-layer-panel map-layer-actions" role="group" aria-label="Capas del mapa">
-                <label class="map-layer-toggle routes"><input type="checkbox" data-map-layer="routes" checked> Rutas</label>
-                <label class="map-layer-toggle vehicles" title="Última posición de cada camión"><input type="checkbox" data-map-layer="vehicles"> Camiones</label>
+                <label class="map-layer-toggle routes"><input type="checkbox" data-map-layer="usage" checked> Rutas aprendidas</label>
+                <label class="map-layer-toggle vehicles"><input type="checkbox" data-map-layer="vehicles" checked> Camiones</label>
+                <label class="map-layer-toggle trails"><input type="checkbox" data-map-layer="trails" checked> Alertas</label>
                 <button id="reset-map-view" class="map-reset" type="button">⌖ Vista general</button>
               </div>
             </div>
-            <div class="atlas-foot" id="classified-map-legend" hidden>
-              <span><i class="high"></i>Más usada</span><span><i class="medium"></i>Uso medio</span><span><i class="low"></i>Poco usada</span>
-              <small id="map-last-update">Cargando…</small><small id="heatmap-zones" hidden></small>
+            <div class="atlas-foot vg-legend" id="classified-map-legend">
+              <span class="vg-legend-title">Niveles</span>
+              <span class="vg-scale" id="vg-scale"></span>
+              <small id="map-last-update">Cargando…</small>
             </div>
           </article>
-          <aside class="route-insights atlas-side" aria-label="Explorador de rutas y camiones">
+          <aside class="route-insights atlas-side" aria-label="Alertas y camiones">
             <article class="monitor-panel">
-              <div class="monitor-tabs" role="tablist" aria-label="Elementos del mapa">
-                <button type="button" class="monitor-tab is-active" data-monitor-tab="routes" role="tab" aria-selected="true">Rutas <b id="monitor-route-count">—</b></button>
+              <div class="monitor-tabs" role="tablist" aria-label="Lista">
+                <button type="button" class="monitor-tab is-active" data-monitor-tab="alerts" role="tab" aria-selected="true">Alertas <b id="alert-count">—</b></button>
                 <button type="button" class="monitor-tab" data-monitor-tab="vehicles" role="tab" aria-selected="false">Camiones <b id="vehicle-live-count">—</b></button>
               </div>
-              <label class="monitor-search"><span>⌕</span><input id="monitor-search" type="search" placeholder="Buscar ruta…" aria-label="Buscar ruta"></label>
-              <ul id="route-monitor-list" class="monitor-list" data-monitor-list="routes"><li>Esperando rutas…</li></ul>
-              <ul id="vehicle-live-list" class="monitor-list" data-monitor-list="vehicles" hidden><li>Esperando posiciones…</li></ul>
+              <div class="vg-alert-filter" id="vg-alert-filter" role="group" aria-label="Estado de las alertas">
+                <button type="button" class="is-active" data-alert-filter="activa">Activas</button>
+                <button type="button" data-alert-filter="sin_senal">Sin señal</button>
+                <button type="button" data-alert-filter="historial">Historial</button>
+              </div>
+              <div class="vg-history" id="vg-history" hidden>
+                <div class="vg-history-row">
+                  <input type="date" id="vg-history-day" aria-label="Día del historial">
+                  <div class="vg-history-ranges" role="group" aria-label="Período">
+                    <button type="button" class="is-active" data-history-range="dia">Día</button>
+                    <button type="button" data-history-range="semana">7 días</button>
+                    <button type="button" data-history-range="mes">Mes</button>
+                  </div>
+                </div>
+                <div class="vg-history-row">
+                  <small id="vg-history-note">—</small>
+                  <button type="button" id="vg-history-csv" class="vg-history-csv" title="Una fila por alerta, para abrir en Excel">↓ Descargar</button>
+                </div>
+              </div>
+              <label class="monitor-search"><span>⌕</span><input id="monitor-search" type="search" placeholder="Buscar patente, camión o conductor…" aria-label="Buscar"></label>
+              <ul id="alert-list" class="monitor-list vg-alert-list" data-monitor-list="alerts"><li class="monitor-empty">Esperando las rutas aprendidas…</li></ul>
+              <ul id="vehicle-live-list" class="monitor-list" data-monitor-list="vehicles" hidden><li class="monitor-empty">Esperando posiciones…</li></ul>
               <div id="map-selection-detail" class="map-selection-detail" aria-live="polite">
-                <span>Selección</span><strong>Elige una ruta o un camión</strong><p>El mapa lo centra y muestra sus datos.</p>
+                <span>Selección</span><strong>Elige una alerta o un camión</strong><p>El mapa mostrará solo lo suyo.</p>
               </div>
             </article>
           </aside>
         </div>
-        <details class="heatmap-method"><summary>¿Cómo se clasifican las rutas?</summary><p id="heatmap-method">Esperando la metodología…</p></details>
-      </section>
-    </div>
-    <div id="prediccion" class="dataset-space" data-dataset-view="prediction" hidden>
-      <section class="panel prediction-panel" aria-labelledby="prediction-title">
-        <div class="section-top"><div><span class="eyebrow">MACHINE LEARNING · PREDICCIÓN</span><h2 id="prediction-title">Actividad esperada de la flota</h2></div><span id="prediction-status" class="status neutral">Cargando…</span></div>
-        <div class="prediction-tabs" role="tablist" aria-label="Modelo de predicción">
-          <button type="button" role="tab" class="prediction-tab is-active" data-prediction-tab="calor" aria-selected="true"><span>◉</span><span><strong>Mapa de calor</strong><small>Zonas con más movimiento</small></span></button>
-          <button type="button" role="tab" class="prediction-tab" data-prediction-tab="rutas" aria-selected="false"><span>⟋</span><span><strong>Rutas</strong><small>Rutas completas y camiones esperados</small></span></button>
+        <div class="lr-grid">
+        <article class="dashboard-card lr-table-card">
+          <div class="dashboard-card-heading"><div><span class="eyebrow">CLASIFICACIÓN</span><h3>Niveles de las rutas</h3></div><span class="chart-unit">Según camiones distintos por ruta</span></div>
+          <div class="lr-table-wrap"><table id="lr-table" class="lr-table"></table></div>
+          <small id="lr-table-foot" class="lr-table-foot">Esperando el modelo…</small>
+        </article>
         </div>
-        <p id="prediction-intro" class="telemetry-intro">Zonas donde se espera más movimiento de camiones en los próximos días, según lo ocurrido en las últimas semanas.</p>
-        <div class="real-metrics prediction-metrics" aria-label="Resumen de la predicción">
-          <article><span id="prediction-total-label">Reportes esperados</span><strong id="prediction-total">—</strong><small id="prediction-total-detail">Camiones en movimiento</small></article>
-          <article><span>Día con más actividad</span><strong id="prediction-peak">—</strong><small id="prediction-peak-detail">—</small></article>
-          <article><span>Error en días de prueba</span><strong id="prediction-error">—</strong><small id="prediction-error-detail">Reportes por zona y día</small></article>
-          <article><span>Aprendió con datos hasta</span><strong id="prediction-base">—</strong><small id="prediction-base-detail">—</small></article>
-        </div>
-        <div class="prediction-control">
-          <div class="prediction-toolbar">
-            <div class="prediction-modes" role="group" aria-label="Qué días ver">
-              <button type="button" data-prediction-mode="day" aria-pressed="true">Un día</button>
-              <button type="button" data-prediction-mode="range" aria-pressed="false">Rango de días</button>
-              <button type="button" data-prediction-mode="all" aria-pressed="false">Todos</button>
-            </div>
-            <button type="button" id="prediction-play" class="prediction-play" aria-pressed="false">▶ Recorrer días</button>
-          </div>
-          <div class="prediction-wheel-wrap">
-            <button type="button" id="prediction-prev" class="wheel-arrow" aria-label="Día anterior">‹</button>
-            <div id="prediction-wheel" class="prediction-wheel" tabindex="0" role="listbox" aria-label="Ruleta de días: gira con la rueda del mouse, arrastra o usa las flechas"></div>
-            <button type="button" id="prediction-next" class="wheel-arrow" aria-label="Día siguiente">›</button>
-          </div>
-          <div id="prediction-range" class="prediction-range" hidden>
-            <div class="range-track"><i id="prediction-range-fill"></i></div>
-            <input type="range" id="prediction-range-from" min="0" max="14" step="1" value="0" aria-label="Desde">
-            <input type="range" id="prediction-range-to" min="0" max="14" step="1" value="6" aria-label="Hasta">
-          </div>
-          <p id="prediction-selection" class="prediction-selection" aria-live="polite"></p>
-          <div class="confidence-legend"><span><i class="confidence-dot alta"></i>Confianza alta</span><span><i class="confidence-dot media"></i>Media</span><span><i class="confidence-dot baja"></i>Baja</span><small>Según el error real al predecir esa misma cantidad de días hacia adelante.</small></div>
-        </div>
-        <div id="prediction-map" class="prediction-map" role="application" aria-label="Mapa de calor de la actividad esperada"></div>
-        <div class="prediction-legend" id="prediction-legend-heat"><span>Menos actividad</span><i aria-hidden="true"></i><span>Más actividad</span><small>Es una predicción: no son posiciones reales de los camiones.</small></div>
-        <div class="prediction-legend routes" id="prediction-legend-routes" hidden><span class="level high">Más camiones esperados</span><span class="level medium">Medio</span><span class="level low">Menos camiones</span><small>Es una predicción: cada ruta se dibuja con su viaje real representativo; pasa el mouse para ver su nombre y cuántos camiones.</small></div>
-        <div class="prediction-charts">
-          <article class="dashboard-card">
-            <div class="dashboard-card-heading"><div><span class="eyebrow">PRÓXIMOS DÍAS</span><h3>Actividad esperada por día</h3></div><span class="chart-unit" id="prediction-chart-unit">Reportes</span></div>
-            <p>Toca un día para verlo en el mapa. Los fines de semana suelen tener menos movimiento.</p>
-            <div id="prediction-daily-chart" class="prediction-columns" role="group" aria-label="Actividad esperada por día"></div>
-          </article>
-          <article class="dashboard-card">
-            <div class="dashboard-card-heading"><div><span class="eyebrow">EVALUACIÓN</span><h3>¿Qué método predice mejor?</h3></div><span class="chart-unit">Error · menor es mejor</span></div>
-            <p>Error promedio en días de prueba que ningún método vio. Se publica el de menor error.</p>
-            <div id="prediction-methods-chart" class="dashboard-bars prediction-methods" aria-label="Error de cada método"></div>
-          </article>
-        </div>
-        <details class="heatmap-method"><summary>¿Cómo se calcula la predicción?</summary><p id="prediction-method">Esperando la primera predicción…</p></details>
+        <details class="heatmap-method"><summary>¿Cuándo hay una alerta?</summary><p id="heatmap-method">Esperando el modelo…</p></details>
+        <details class="heatmap-method lr-model-details"><summary>¿Cómo funciona el modelo? <small>Machine learning · aprendizaje no supervisado</small></summary>
+          <ol id="lr-model" class="lr-model"><li class="chart-empty">Esperando el modelo…</li></ol>
+        </details>
       </section>
     </div>
     <footer><span>ARTISA <span class="slash">/</span> Del origen al frontend</span><span>ETL · MariaDB · Machine Learning · Endpoints · Frontend</span></footer>
   </main>
+  <!-- Asistente flotante: visible en todas las vistas mientras hay sesión. -->
+  <div class="assistant-widget">
+    <section id="assistant-panel" class="assistant-panel" role="dialog" aria-labelledby="assistant-title" hidden>
+      <header class="assistant-head">
+        <span class="assistant-avatar" aria-hidden="true">✦</span>
+        <div class="assistant-head-text"><h2 id="assistant-title">Asistente Artisa</h2><span id="assistant-status" class="assistant-state">Listo</span></div>
+        <button type="button" id="assistant-clear" class="assistant-icon" title="Borrar conversación" aria-label="Borrar conversación">↺</button>
+        <button type="button" id="assistant-close" class="assistant-icon" title="Minimizar" aria-label="Minimizar asistente">✕</button>
+      </header>
+      <div id="assistant-log" class="assistant-log" role="log" aria-live="polite" aria-label="Conversación con el asistente">
+        <p class="assistant-empty">Hola. Pregúntame por la flota, las rutas o las alertas. Solo veo resúmenes: no conductores ni ubicaciones exactas.</p>
+      </div>
+      <div class="assistant-suggestions" aria-label="Preguntas de ejemplo">
+        <button type="button" data-assistant-question="¿Cuántos camiones están en ruta ahora y cuántos km lleva la flota hoy?">Flota ahora</button>
+        <button type="button" data-assistant-question="¿Cuáles son las 3 rutas más usadas y cuántos camiones las usan?">Rutas más usadas</button>
+        <button type="button" data-assistant-question="¿Qué significan los niveles N1 a N6 de las rutas?">Niveles de uso</button>
+        <button type="button" data-assistant-question="¿Hay alertas activas ahora y en qué rutas?">Alertas</button>
+        <button type="button" data-assistant-question="¿Cómo aprende las rutas el modelo de machine learning?">Modelo</button>
+        <button type="button" data-assistant-question="¿Qué camiones llevan días sin reportar?">Sin reportar</button>
+      </div>
+      <form id="assistant-form" class="assistant-form">
+        <label for="assistant-input" class="sr-only">Pregunta para el asistente</label>
+        <textarea id="assistant-input" rows="1" maxlength="500" placeholder="Escribe tu pregunta…" required></textarea>
+        <button type="submit" id="assistant-send" class="assistant-send" aria-label="Enviar pregunta">➤</button>
+      </form>
+      <p class="assistant-note"><span id="assistant-count">0 / 500</span> · IA: puede equivocarse.</p>
+    </section>
+    <button type="button" id="assistant-toggle" class="assistant-bubble" aria-expanded="false" aria-controls="assistant-panel" title="Asistente Artisa">
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.9 2 11.7c0 2.6 1.3 4.9 3.4 6.5L5 22l4-2.2c.9.2 1.9.4 3 .4 5.5 0 10-3.9 10-8.6S17.5 3 12 3Zm-4 10a1.3 1.3 0 1 1 0-2.6A1.3 1.3 0 0 1 8 13Zm4 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6Zm4 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6Z"/></svg>
+      <span class="sr-only">Abrir asistente</span>
+      <i id="assistant-unread" class="assistant-unread" hidden></i>
+    </button>
+  </div>
   </div>
 </body>
 </html>

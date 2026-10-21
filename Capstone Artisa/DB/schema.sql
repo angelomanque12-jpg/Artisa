@@ -226,95 +226,73 @@ ALTER TABLE telemetria_api ADD COLUMN IF NOT EXISTS driver_last_name VARCHAR(128
 -- Dirección que entrega el GPS (sirve para nombrar los lugares de las rutas por comuna).
 ALTER TABLE telemetria_api ADD COLUMN IF NOT EXISTS location VARCHAR(255) NULL;
 
--- Predicción de actividad (machine_learning/prediccion.py). Datos derivados y recalculables.
--- Actividad real por día local (Chile) y celda de 0,01° (~1 km): reportes de camiones en
--- movimiento (velocidad > 2 km/h), sin repetidos entre tablas.
-CREATE TABLE IF NOT EXISTS actividad_celda_dia (
-    fecha DATE NOT NULL,
-    celda_lat INT NOT NULL,
-    celda_lon INT NOT NULL,
-    conteo INT UNSIGNED NOT NULL,
-    PRIMARY KEY (fecha, celda_lat, celda_lon)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- La antigua predicción por día (LightGBM: tablas actividad_* y prediccion_*) se retiró. En
+-- bases existentes esas tablas pueden seguir: no se usan ni se borran.
 
--- Con qué cálculo del cierre diario se contó cada día (si el día se recalcula, se recuenta).
-CREATE TABLE IF NOT EXISTS actividad_dia_estado (
-    fecha DATE NOT NULL,
-    calculado_en DATETIME(6) NOT NULL,
+-- Registro de alertas de ruta (machine_learning/modelo_rutas.py, Parte 8). Machine revisa cada
+-- minuto los camiones en vivo contra las rutas aprendidas y guarda cada alerta: un camión en
+-- movimiento, fuera de faenas, en una ruta mínima (N5) o fuera de ruta (N6). Mientras sigue
+-- abierta se actualiza. Al terminar queda fija, aunque después el modelo aprenda esa ruta.
+CREATE TABLE IF NOT EXISTS alertas_ruta (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    asset_id VARCHAR(16) NOT NULL,
+    asset_name VARCHAR(128) NULL,
+    conductor VARCHAR(255) NULL,
+    ubicacion VARCHAR(255) NULL,
+    inicio DATETIME(6) NOT NULL,
+    fin DATETIME(6) NOT NULL,
+    estado VARCHAR(16) NOT NULL,
+    nivel VARCHAR(4) NOT NULL,
+    route_id VARCHAR(16) NULL,
+    ruta_label VARCHAR(255) NULL,
+    minutos INT UNSIGNED NOT NULL,
     reportes INT UNSIGNED NOT NULL,
-    PRIMARY KEY (fecha)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS prediccion_version (
-    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    creado_en DATETIME(6) NOT NULL,
-    base_hasta DATE NOT NULL,
-    desde DATE NOT NULL,
-    hasta DATE NOT NULL,
-    camiones INT UNSIGNED NOT NULL,
-    activa TINYINT(1) NOT NULL DEFAULT 0,
-    metricas_json TEXT NOT NULL,
+    km_recorridos DOUBLE NOT NULL,
+    km_ruta_habitual DOUBLE NULL,
+    velocidad DOUBLE NULL,
+    latitud DOUBLE NOT NULL,
+    longitud DOUBLE NOT NULL,
+    corredor_lat DOUBLE NULL,
+    corredor_lon DOUBLE NULL,
+    corredor_km DOUBLE NULL,
+    estela MEDIUMTEXT NOT NULL,
+    version_modelo INT UNSIGNED NULL,
+    detectada_en DATETIME(6) NOT NULL,
+    actualizada_en DATETIME(6) NOT NULL,
     PRIMARY KEY (id),
-    INDEX idx_prediccion_version_activa (activa)
+    UNIQUE KEY uq_alertas_ruta_camion_inicio (asset_id, inicio),
+    INDEX idx_alertas_ruta_inicio (inicio),
+    INDEX idx_alertas_ruta_estado (estado, fin)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS prediccion_celda (
-    version_id INT UNSIGNED NOT NULL,
-    fecha DATE NOT NULL,
-    celda_lat INT NOT NULL,
-    celda_lon INT NOT NULL,
-    valor FLOAT NOT NULL,
-    PRIMARY KEY (version_id, fecha, celda_lat, celda_lon)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Predicción de rutas: camiones distintos por tramo (dos celdas vecinas de 0,01° que un
--- camión cruzó entre dos reportes seguidos) y día local.
-CREATE TABLE IF NOT EXISTS actividad_tramo_dia (
-    fecha DATE NOT NULL,
-    a_lat INT NOT NULL,
-    a_lon INT NOT NULL,
-    b_lat INT NOT NULL,
-    b_lon INT NOT NULL,
-    camiones SMALLINT UNSIGNED NOT NULL,
-    PRIMARY KEY (fecha, a_lat, a_lon, b_lat, b_lon)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS actividad_tramo_estado (
-    fecha DATE NOT NULL,
-    calculado_en DATETIME(6) NOT NULL,
-    reportes INT UNSIGNED NOT NULL,
-    PRIMARY KEY (fecha)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Cada versión de predicción es de un tipo: calor (zonas) o rutas (tramos).
-ALTER TABLE prediccion_version ADD COLUMN IF NOT EXISTS tipo VARCHAR(16) NOT NULL DEFAULT 'calor';
-ALTER TABLE prediccion_version ADD INDEX IF NOT EXISTS idx_prediccion_version_tipo (tipo, activa);
-
-CREATE TABLE IF NOT EXISTS prediccion_tramo (
-    version_id INT UNSIGNED NOT NULL,
-    fecha DATE NOT NULL,
-    a_lat INT NOT NULL,
-    a_lon INT NOT NULL,
-    b_lat INT NOT NULL,
-    b_lon INT NOT NULL,
-    valor FLOAT NOT NULL,
-    PRIMARY KEY (version_id, fecha, a_lat, a_lon, b_lat, b_lon)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Predicción por ruta completa (rutas de la clasificación activa): mediana de los camiones
--- predichos en sus tramos, y la línea de la ruta (su viaje real representativo).
-CREATE TABLE IF NOT EXISTS prediccion_ruta (
-    version_id INT UNSIGNED NOT NULL,
-    fecha DATE NOT NULL,
-    route_id VARCHAR(16) NOT NULL,
-    valor FLOAT NOT NULL,
-    PRIMARY KEY (version_id, fecha, route_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS prediccion_ruta_forma (
-    version_id INT UNSIGNED NOT NULL,
-    route_id VARCHAR(16) NOT NULL,
-    label VARCHAR(255) NOT NULL,
-    geometria MEDIUMTEXT NOT NULL,
-    PRIMARY KEY (version_id, route_id)
+-- Cortes de señal (machine_learning/modelo_rutas.py, Parte 9). Un camión en movimiento fuera de
+-- las rutas habituales que pasa más de 5 min sin posición nueva. desde y hasta: último reporte
+-- antes del corte y primero después (UTC). hasta NULL: sigue sin posición nueva. tipo
+-- gps_congelado: siguieron llegando copias del mismo reporte (el equipo transmitía sin GPS).
+-- tipo sin_datos: no llegó nada. km_linea y kmh_necesaria: distancia en línea recta entre ambos
+-- puntos y la velocidad media que habría necesitado.
+CREATE TABLE IF NOT EXISTS cortes_senal (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    asset_id VARCHAR(16) NOT NULL,
+    desde DATETIME(6) NOT NULL,
+    hasta DATETIME(6) NULL,
+    minutos INT UNSIGNED NOT NULL,
+    tipo VARCHAR(16) NOT NULL,
+    lat_antes DOUBLE NOT NULL,
+    lon_antes DOUBLE NOT NULL,
+    velocidad_antes DOUBLE NULL,
+    encendido_antes TINYINT(1) NULL,
+    evento_antes VARCHAR(128) NULL,
+    lat_despues DOUBLE NULL,
+    lon_despues DOUBLE NULL,
+    km_linea DOUBLE NULL,
+    kmh_necesaria DOUBLE NULL,
+    copias INT UNSIGNED NOT NULL DEFAULT 0,
+    ultima_copia DATETIME(6) NULL,
+    detectado_en DATETIME(6) NOT NULL,
+    actualizado_en DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_cortes_senal_camion_desde (asset_id, desde),
+    INDEX idx_cortes_senal_desde (desde),
+    INDEX idx_cortes_senal_abiertos (hasta)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

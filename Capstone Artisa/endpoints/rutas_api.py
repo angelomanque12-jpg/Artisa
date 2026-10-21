@@ -1,6 +1,6 @@
 """Respuesta de /api/mapa, y el recorrido GPS de un camión en un día.
 
-Leen la versión activa de la clasificación de rutas (machine_learning/rutas_job.py).
+Leen la versión activa del modelo de rutas (machine_learning/modelo_rutas.py).
 Si todavía no hay una, devuelven None y la API mantiene la respuesta "pendiente".
 """
 
@@ -13,6 +13,16 @@ import pymysql
 from common import dias
 
 REFRESH_SECONDS = 60
+# Niveles de las rutas aprendidas (machine_learning/modelo_rutas.py), de la más concurrida a la menos.
+# El nivel 6 no es una ruta: es un camión que anda por un camino que el modelo no conoce.
+NIVELES = {
+    "N1": ("Troncal", "#14532d"),
+    "N2": ("Muy usada", "#3f9d4a"),
+    "N3": ("Uso medio", "#d9a021"),
+    "N4": ("Poco usada", "#ef7d22"),
+    "N5": ("Mínima: 1 o 2 camiones", "#d7301f"),
+    "N6": ("Fuera de ruta", "#7b3fa0"),
+}
 JOURNEY_LIMIT = 20000
 MAX_GAP_MIN = 5
 VEL_MAX_KMH = 150
@@ -180,9 +190,7 @@ def live_positions(cursor):
 
 
 def _route(row):
-    from_level = {"HIGH": ("Más usada", "#14532d"), "MEDIUM": ("Uso medio", "#f97316"),
-                  "LOW": ("Poco usada", "#dc2626")}
-    label, color = from_level.get(row["usage_level"], (row["usage_level"], "#718785"))
+    label, color = NIVELES.get(row["usage_level"], (row["usage_level"], "#718785"))
     return {
         "route_id": row["route_id"], "label": row["label"], "usage_count": row["usage_count"],
         "unique_vehicle_count": row["unique_vehicle_count"], "usage_level": row["usage_level"],
@@ -198,14 +206,15 @@ def classified_map(cursor):
     version = active_version(cursor)
     if not version:
         return None
-    cursor.execute("SELECT * FROM rutas_clasificadas WHERE version_id=%s ORDER BY usage_count DESC, route_id", (version["id"],))
+    cursor.execute("SELECT * FROM rutas_clasificadas WHERE version_id=%s ORDER BY unique_vehicle_count DESC, usage_count DESC, route_id",
+                   (version["id"],))
     routes = [_route(row) for row in cursor.fetchall()]
     cursor.execute("SELECT asset_id, route_id FROM rutas_vehiculo WHERE version_id=%s", (version["id"],))
     route_by_asset = {row["asset_id"]: row["route_id"] for row in cursor.fetchall()}
     vehicles = latest_positions(cursor, route_by_asset)
     metrics = version["metricas"]
     available = available_reports(cursor)
-    umbrales = metrics.get("umbrales") or {}
+    cortes = (metrics.get("umbrales") or {}).get("cortes") or []
     return {
         "schema_version": 1, "status": "ok", "source_mode": "HISTORICAL_GPS_CATALOG",
         "snapshot_date": version["hasta"].isoformat(),
@@ -227,9 +236,8 @@ def classified_map(cursor):
             "refresh_seconds": REFRESH_SECONDS,
             "classification": (
                 f"Rutas completas entre paradas, agrupadas por origen-destino y trayectoria, con los viajes del "
-                f"{version['desde']:%d-%m-%Y} al {version['hasta']:%d-%m-%Y}. Nivel por cantidad de recorridos: "
-                f"verde con más de {round(umbrales.get('percentil_67') or 0, 1):g}, rojo con "
-                f"{round(umbrales.get('percentil_33') or 0, 1):g} o menos (percentiles 67 y 33)."
+                f"{version['desde']:%d-%m-%Y} al {version['hasta']:%d-%m-%Y}. Nivel por camiones distintos: "
+                + ", ".join(f"{c['nivel']} {c['desde']}–{c['hasta']}" for c in cortes) + "."
             ),
             "geometry": "Cada línea es un viaje real observado (el más representativo de su ruta).",
             "road_matching": "Sin ajuste a calles: se dibujan los puntos GPS reportados, sin unir saltos.",

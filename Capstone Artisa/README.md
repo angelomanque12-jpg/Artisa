@@ -1,77 +1,108 @@
 # Artisa Transportes
 
-Monitoreo de flota con la telemetría GPS real de la empresa: reportes diarios (00:00 a
-00:00 hora de Chile), clasificación de rutas por uso y mapa de camiones.
+Monitoreo de la flota con la telemetría GPS real de la empresa: dónde está cada camión, qué hizo
+cada día, qué rutas usa la flota (aprendidas por machine learning) y alertas cuando un camión
+sale de ellas.
 
-- **Instalar y operar:** [docs/INSTALACION.md](docs/INSTALACION.md)
-- **Web:** http://localhost:8080 (usuario `admin`)
+- **Instalar en el servidor y operar:** [docs/INSTALACION.md](docs/INSTALACION.md)
+- **Web:** http://localhost:8080 (o `http://IP-DEL-SERVIDOR:8080` desde la red), usuario `admin`
 - **Comandos:** `python3 scripts/artisa.py --help`
 
 ```mermaid
 flowchart LR
     API[API de la empresa] --> T[telemetria] --> DB[(MariaDB)]
-    JSON[JSON histórico] -.opcional.-> M[(MongoDB)] -.-> E[etl] -.-> DB
-    DB --> MD[machine-diario] --> DB
+    DB --> MD[machine-diario<br/>cierre diario + modelo de rutas] --> DB
     DB --> EP[endpoints] --> F[front] --> N[nginx :8080]
     A[auth] --> N
+    JSON[JSON histórico] -.solo desarrollo.-> M[(MongoDB)] -.-> E[etl] -.-> DB
 ```
 
 ## Servicios (Docker Compose)
 
 | Servicio | Qué hace |
 |---|---|
-| `telemetria` | Trae los reportes de la API de la empresa cada 30 s. Sobrevive a cortes de red y recupera lo pendiente sin duplicar. |
-| `machine-diario` | Cierra cada día, extrae viajes, clasifica las rutas y predice la actividad de los próximos 15 días (00:30). |
+| `telemetria` | Trae los reportes de la API de la empresa cada 30 s. Si se corta la red, recupera lo pendiente sin duplicar. |
+| `machine-diario` | Cada día a las 00:30 cierra el día anterior y reentrena el modelo de rutas; cada minuto revisa y guarda las alertas. |
 | `mariadb` | Base de datos (volumen persistente). |
-| `endpoints` | API de solo lectura para la web (`/api/*`). |
-| `front` + `nginx` | Interfaz web; nginx es la única entrada (puerto 8080). |
-| `auth` | Inicio de sesión (contraseña con hash, sesiones JWT de 12 h). |
-| `respaldo` | Respaldo diario de MariaDB en `respaldos/` (03:00). |
-| `mongodb` + `etl` | Solo para cargar el JSON histórico (`ETL_HISTORICO=1`). |
+| `endpoints` | API de solo lectura para la web (`/api/*`) y el asistente (`/api/chat`). |
+| `front` + `nginx` | La web; nginx es la única entrada (puerto 8080). |
+| `auth` | Inicio de sesión (contraseña con hash, sesión de 12 h). |
+| `respaldo` | Respaldo diario de la base en `respaldos/` (03:00). |
+| `mongodb` + `etl` | Solo en desarrollo, para cargar el JSON histórico. |
 
 ## Reglas clave
 
 - **Día:** de 00:00 a 00:00 hora de Chile. Ningún reporte queda fuera ni se cuenta dos veces.
 - **Recorrido:** solo se unen reportes seguidos (5 min o menos y bajo 150 km/h). Los saltos de GPS no se dibujan.
-- **Parada:** 10 min dentro de 200 m. Una espera larga (por ejemplo, cargando) es una parada, no corta el viaje.
+- **Parada:** 10 min dentro de 200 m. Una espera larga (por ejemplo, cargando) es una parada.
 - **Viaje:** recorrido entre dos paradas. Los viajes partidos por la medianoche se empalman.
-- **Ruta:** viajes con el mismo origen y destino (faena o lugar frecuente) y la misma trayectoria (750 m). Ida y vuelta son la misma ruta. Mínimo 5 viajes y 2 camiones.
-- **Nivel de uso:** verde = más usada (sobre el percentil 67), naranja = uso medio, rojo = poco usada (percentil 33 o menos). Ventana: últimos 90 días.
-- **Línea de la ruta:** un viaje real observado (el más representativo), nunca un promedio inventado.
-- **Predicción (LightGBM), un solo módulo con dos modelos:** *mapa de calor* (reportes en movimiento por zona de ~1 km) y *rutas* (camiones distintos por tramo de ~1 km). Aprende de las últimas 16 semanas (mínimo 21 días). En días de prueba compiten LightGBM, el promedio del mismo día de la semana y el promedio histórico; se publica el que se equivoque menos. Se reentrena desde cero cada vez que se cierra un día y se recalcula cada medianoche: pronostica de mañana a hoy + 15 (los días que ya pasaron nunca se muestran) y publica solo los días cuyo error no supera en más de 30 % al del primer día (mínimo 7). Al reentrenar mide el **error real**: lo que la versión anterior predijo para el día recién cerrado contra lo que pasó. En la web, la predicción de rutas se muestra por **ruta completa** (las de la clasificación, con su viaje real representativo): cada ruta lleva un solo valor, la mediana de los camiones predichos en sus tramos, y un solo color (verde, naranja o rojo con los mismos percentiles que la clasificación).
-- **Camiones nuevos:** cuando el catálogo de camiones cambia, la predicción vuelve a contar las 16 semanas con la lista nueva y se reentrena.
-- **Camiones:** solo los del catálogo `DB/vehiculos_data.sql`. La patente y el conductor vienen del GPS (no se guarda el RUT).
+- **Camiones:** solo los del catálogo `DB/vehiculos_data.sql`. No se guarda el RUT del conductor.
+
+### Machine learning: el modelo que aprende las rutas
+
+Todo está en un archivo, `machine_learning/modelo_rutas.py`, dividido en partes. Es
+aprendizaje no supervisado: nadie le dice cuáles son las rutas, las descubre en los viajes reales.
+
+| Parte | Qué hace | Algoritmo |
+|---|---|---|
+| 1. Viajes | Detecta paradas y viajes de cada camión | Reglas de parada y recorrido |
+| 2. Datos | Toma los viajes de los últimos 90 días con origen y destino | — |
+| 3. Lugares | Agrupa las paradas cercanas (500 m) en lugares; dentro de una faena, el lugar es la faena | **DBSCAN** |
+| 4. Rutas | Junta los viajes que siguen el mismo camino entre dos lugares (750 m) y dibuja cada ruta con un viaje real | **Clustering jerárquico** + **medoide** |
+| 5. Niveles | Clasifica cada ruta según cuántos camiones distintos la usan | **Cortes naturales de Jenks** |
+| 6. Entrenamiento | Se reentrena cada día y prevé las rutas de los próximos 7 días | — |
+| 7. Validación | `python3 scripts/artisa.py rutas` reentrena y muestra la tabla de niveles | — |
+
+**Niveles:** N1 troncal, N2 muy usada, N3 uso medio y N4 poco usada (los rangos los aprende el
+modelo) · **N5 mínima** = 1 o 2 camiones · **N6 fuera de ruta** = un camión donde no hay ninguna
+ruta aprendida.
+
+**Alerta:** un camión en movimiento, fuera de las faenas, en N5 o N6 por 10 min o más y a 2 km o
+más de una ruta habitual (N1–N4). Es algo para revisar, no una falta comprobada.
+`machine-diario` las revisa cada minuto (Parte 8 del modelo) y las guarda en la tabla
+`alertas_ruta`: cuándo empezó y terminó cada una, cuánto duró, nivel, km recorridos y camino
+seguido. Así quedan como registro aunque el camión vuelva a su ruta.
+
+**Cortes de señal (Parte 9):** si un camión en movimiento fuera de las rutas habituales pasa más
+de 5 min sin posición nueva, se guarda en `cortes_senal`: último reporte antes (hora, lugar,
+velocidad, motor), primero después y la distancia en línea recta entre ambos. "GPS sin posición
+nueva" = siguieron llegando copias del mismo reporte (el equipo transmitía, pero sin GPS);
+"Sin datos" = no llegó nada. Es un indicio para revisar, no una prueba.
 
 ## Web
 
-| Sección | Contenido |
+| Sección | Para qué sirve |
 |---|---|
-| Camiones en vivo (inicio) | Estado de cada camión (en ruta, detenido, sin señal reciente) y lo que hizo hoy o cualquier día anterior. Ficha por camión y día: recorrido en el mapa con cada viaje, paradas, reproducción del día, últimos 30 días, reportes GPS del día e imagen descargable. Abajo, los últimos reportes recibidos en vivo y el resumen del mes con descarga CSV. |
-| Dashboard | Dos pestañas. **Datos globales**: reportes disponibles, recorridos, rutas por nivel, uso de rutas por zona (zonas relativas), disponibilidad de la flota y ranking de rutas (cada una abre el mapa). **Datos detallados**: reportes y km por patente del mes elegido (día a día) o de todos los meses, con búsqueda, orden y CSV, calendario de cada camión, camiones sin reportar y calidad de los datos (`/api/dashboard`, cierre diario). |
-| Predicción | Pestañas **Mapa de calor** y **Rutas**: hasta 15 días con ruleta de días, rango, recorrido animado, confianza por día y comparación de métodos. |
-| Mapa de rutas | Estudio del histórico. **Rutas clasificadas**: rutas completas por nivel de uso (filtros y buscador), resumen del período y rutas más y menos usadas; los camiones se encienden aparte. **Mapas de telemetría**: calor, rutas por camión, uso de rutas y puntos para un rango de hasta 14 días. |
+| Camiones en vivo | Dónde está cada camión y qué hizo cada día: recorrido, viajes, paradas, reportes y últimos 30 días. |
+| Rutas y alertas | Rutas previstas para los próximos 7 días con su nivel (N1–N5), camiones en vivo encima, alertas y tabla de niveles. "Historial" muestra las alertas ya terminadas por día, 7 días o mes y las descarga en CSV (Excel); las abiertas están en "Activas" y "Sin señal". Al final, plegado, "¿Cómo funciona el modelo?". |
+| Datos históricos | Mapas de días pasados (hasta 14 días): calor, rutas por camión, uso de rutas y puntos. |
+| Dashboard | Datos por camión en el mes elegido o en todo el historial. Arriba, la tabla de todos los camiones con sus filtros; abajo, las anomalías del período en toda la flota (sin esos filtros): lo que más se sale de lo normal (más paradas, más tiempo detenido, más km, más detención por distancia, más días sin reportes) y dos comparaciones (más paradas, tiempo detenido o km; y los que menos reportaron frente a la mediana de la flota); la tabla trae reportes, km, días con datos, paradas, tiempo detenido, nivel de reporte A–D y último día con datos. La tabla también se ve "Mes a mes" (reportes o km de cada camión por mes). Cada camión se abre día por día. Descarga en CSV: la tabla por camión o el detalle día por día, con los filtros activos. |
+| Asistente | Chat abajo a la derecha que responde sobre la flota, las rutas y las alertas. |
 | Arquitectura | Estado de cada servicio. |
+
+## Asistente (IA)
+
+- Usa Gemini (gratis desde Google AI Studio). La clave va **solo** en `.env` (`GEMINI_API_KEY`);
+  sin clave, el chat avisa que no está configurado y el resto funciona igual.
+- Responde con estas reglas y con los mismos resultados que muestra la web. Solo lectura: nunca
+  recibe conductores, RUT ni coordenadas.
+- Límites: 500 caracteres por pregunta, 6 por minuto y 200 por día.
 
 ## Estructura
 
 ```
 DB/                 esquema y catálogos (vehículos, faenas)
 telemetria_api/     conector de la API de la empresa
-machine_learning/   cierre diario, viajes, clasificación de rutas y predicción
-endpoints/          API de la web
+machine_learning/   cierre diario y modelo de rutas (modelo_rutas.py)
+endpoints/          API de la web y asistente
 front/  auth/  nginx/
-ETLs/               carga del JSON histórico (opcional)
-guias_ml/           cuadernos de experimentación (Colab), sin salidas ni datos
-scripts/            artisa.py (comandos), start.py, respaldo, comprobaciones
+scripts/            artisa.py (comandos), arranque, respaldo y comprobaciones
+ETLs/               carga del JSON histórico (solo desarrollo)
 tests/              pruebas: python3 -m unittest discover -s tests
 ```
 
 ## Seguridad
 
 - Las claves viven solo en `.env` (se crea solo y no se sube a Git).
-- La conexión a la API de la empresa es de solo lectura (`SELECT`) y no crea índices ni modifica su base.
-- Nunca usar `docker compose down -v`: borra la base de datos.
-
-## Pendiente
-
-- Alertas de Machine (paradas fuera de lo normal y desvíos de ruta) para que la empresa las revise.
+- La conexión a la API de la empresa es de solo lectura (`SELECT`) y no modifica su base.
+- **Nunca** usar `docker compose down -v`: borra la base de datos.

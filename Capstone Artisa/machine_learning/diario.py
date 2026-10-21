@@ -6,7 +6,7 @@ camiones según el catálogo. Mismas reglas que el cuaderno:
 - Se quitan repeticiones (mismo camión y misma hora) y reportes repetidos entre tablas.
 - Dos reportes seguidos se unen como recorrido solo si la pausa es <= MAX_GAP_MIN y el
   salto no supera VEL_MAX_KMH (no se inventa recorrido ni se unen saltos de GPS).
-- Viajes = recorridos entre paradas (machine_learning/viajes.py). Una pausa larga no
+- Viajes = recorridos entre paradas (Parte 1 de machine_learning/modelo_rutas.py). Una pausa larga no
   separa viajes: el tiempo detenido (p. ej. cargando) se informa aparte.
 
 Corte: el día va de 00:00 a 00:00 hora Chile (common/dias.py). Un viaje que cruza
@@ -22,7 +22,7 @@ import math
 import time
 
 from common import dias
-from machine_learning.viajes import extraer_viajes, resumen_paradas
+from machine_learning.modelo_rutas import extraer_viajes, resumen_paradas
 
 
 VERSION_CALCULO = 3  # 2: viajes entre paradas · 3: paradas sin cortar por pausas, tiempo detenido
@@ -106,7 +106,7 @@ def resumir(filas, por_camion=None, descartados=0):
 
 
 def viajes_del_dia(por_camion, dia):
-    """Viajes entre paradas de cada camión (machine_learning/viajes.py)."""
+    """Viajes entre paradas de cada camión (Parte 1 de machine_learning/modelo_rutas.py)."""
     inicio, fin = dias.limites_utc(dia)
     resultado = []
     for asset_id, puntos in por_camion.items():

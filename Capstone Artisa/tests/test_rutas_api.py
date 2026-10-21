@@ -4,7 +4,7 @@ from datetime import date, datetime
 import json
 import unittest
 
-from endpoints import prediccion_api, rutas_api
+from endpoints import rutas_api
 
 
 class FakeCursor:
@@ -29,12 +29,13 @@ class FakeCursor:
 VERSION = {"id": 4, "desde": date(2026, 7, 1), "hasta": date(2026, 9, 28), "activa": 1,
            "creado_en": datetime(2026, 10, 6),
            "metricas_json": json.dumps({"viajes_clasificados": 18, "camiones": 5,
-                                        "por_nivel": {"HIGH": 1, "LOW": 1},
-                                        "umbrales": {"percentil_33": 2.0, "percentil_67": 6.67}}),
+                                        "por_nivel": {"N1": 1, "N5": 1},
+                                        "umbrales": {"cortes": [{"nivel": "N1", "desde": 3, "hasta": 4},
+                                                                {"nivel": "N5", "desde": 1, "hasta": 2}]}}),
            "lugares_json": "{}"}
 RUTA = {"route_id": "R-ABC123", "label": "Faena Lampa ↔ Lugar 1", "origen": "F7", "destino": "L0",
         "usage_count": 12, "unique_vehicle_count": 4, "observed_points": 360, "km_mediana": 16.6,
-        "usage_level": "HIGH", "geometry_source": "viaje_real_medoide",
+        "usage_level": "N1", "geometry_source": "viaje_real_medoide",
         "geometria": json.dumps({"type": "LineString", "coordinates": [[-70.6, -33.4], [-70.6, -33.25]]}),
         "primer_viaje": datetime(2026, 7, 2), "ultimo_viaje": datetime(2026, 9, 27)}
 
@@ -64,14 +65,14 @@ class MapContractTests(unittest.TestCase):
         self.assertNotEqual(payload["source_mode"], "PENDING_MACHINE")
         route = payload["routes"][0]
         self.assertEqual(route["geometry"]["type"], "LineString")
-        self.assertEqual((route["usage_label"], route["color"]), ("Más usada", "#14532d"))
+        self.assertEqual((route["usage_label"], route["color"]), ("Troncal", "#14532d"))
         self.assertFalse(route["map_matching"])
         vehicle = payload["vehicles"][0]
         self.assertEqual((vehicle["vehicle_id"], vehicle["route_id"], vehicle["fuente"]), ("RJXS30", "R-ABC123", "api"))
         self.assertEqual((vehicle["patente"], vehicle["driver_name"], vehicle["driver_last_name"]),
                          ("RJXS30", "JULIO", "PÉREZ"))
         self.assertEqual(payload["ranking"]["most_used"]["route_id"], "R-ABC123")
-        self.assertIn("6.7", payload["metadata"]["classification"])
+        self.assertIn("N1 3–4", payload["metadata"]["classification"])
 
     def test_latest_position_uses_recent_driver_when_last_report_has_none(self):
         recent_driver = {"asset_id": "TFWK19", "driver_name": "RICHARD", "driver_last_name": "FUENTES",
@@ -135,51 +136,6 @@ class JourneyTests(unittest.TestCase):
         self.assertEqual(journey["cortes"], 2)
         self.assertEqual(journey["minutos_sin_senal"], 47.0)
 
-
-class PredictionApiTests(unittest.TestCase):
-    def test_pending_without_version(self):
-        cursor = FakeCursor([("FROM prediccion_version", [])])
-        self.assertIsNone(prediccion_api.prediction(cursor))
-
-    def test_groups_cells_by_day_with_cell_centers(self):
-        version = {"id": 2, "creado_en": datetime(2026, 10, 13, 4), "base_hasta": date(2026, 10, 12),
-                   "desde": date(2026, 10, 13), "hasta": date(2026, 10, 20), "camiones": 112,
-                   "metricas_json": json.dumps({"metodo": "lightgbm", "mae_modelo": 1.2, "mae_referencia": 1.5,
-                                                "huella_camiones": "x"})}
-        celdas = [{"fecha": date(2026, 10, 13), "celda_lat": -2246, "celda_lon": -6893, "valor": 12.0},
-                  {"fecha": date(2026, 10, 13), "celda_lat": -2245, "celda_lon": -6893, "valor": 3.5},
-                  {"fecha": date(2026, 10, 14), "celda_lat": -2246, "celda_lon": -6893, "valor": 10.0}]
-        cursor = FakeCursor([("FROM prediccion_version", [version]), ("FROM prediccion_celda", celdas)])
-        data = prediccion_api.prediction(cursor, hoy=date(2026, 10, 12))
-        self.assertEqual([d["fecha"] for d in data["dias"]], ["2026-10-13", "2026-10-14"])
-        self.assertEqual(data["dias"][0]["celdas"][0], [-22.455, -68.925, 12.0])
-        self.assertEqual(data["dias"][0]["total"], 16)
-        self.assertEqual(data["dias"][0]["elementos"], 2)
-        self.assertEqual(data["metricas"]["metodo"], "lightgbm")
-        self.assertNotIn("huella_camiones", data["metricas"])
-        # Al día siguiente el 13 ya pasó: no se muestra aunque Machine no haya recalculado.
-        cursor = FakeCursor([("FROM prediccion_version", [version]), ("FROM prediccion_celda", celdas)])
-        data = prediccion_api.prediction(cursor, hoy=date(2026, 10, 13))
-        self.assertEqual(([d["fecha"] for d in data["dias"]], data["desde"]), (["2026-10-14"], "2026-10-14"))
-        cursor = FakeCursor([("FROM prediccion_version", [version]), ("FROM prediccion_celda", celdas)])
-        self.assertIsNone(prediccion_api.prediction(cursor, hoy=date(2026, 10, 14)))  # todo pasado: pendiente
-
-
-class RoutePredictionApiTests(unittest.TestCase):
-    def test_complete_routes_with_one_value_each(self):
-        version = {"id": 3, "creado_en": datetime(2026, 10, 13, 4), "base_hasta": date(2026, 10, 12),
-                   "desde": date(2026, 10, 13), "hasta": date(2026, 10, 27), "camiones": 116,
-                   "metricas_json": json.dumps({"metodo": "promedio_dia_semana", "rutas_publicadas": 1})}
-        valores = [{"fecha": date(2026, 10, 13), "route_id": "R-ABC123", "valor": 4.0}]
-        linea = [[[-22.4551, -68.9249], [-22.4549, -68.9151]]]
-        formas = [{"route_id": "R-ABC123", "label": "Calama ↔ Faena", "geometria": json.dumps(linea)}]
-        cursor = FakeCursor([("FROM prediccion_version", [version]), ("FROM prediccion_ruta_forma", formas),
-                             ("FROM prediccion_ruta ", valores)])
-        data = prediccion_api.prediction(cursor, "rutas", hoy=date(2026, 10, 12))
-        self.assertEqual(data["tipo"], "rutas")
-        self.assertEqual(data["dias"][0]["celdas"], [["R-ABC123", 4.0]])
-        self.assertEqual(data["rutas"]["R-ABC123"], {"label": "Calama ↔ Faena", "lineas": linea})
-        self.assertEqual(data["metricas"]["rutas_publicadas"], 1)
 
 if __name__ == "__main__":
     unittest.main()

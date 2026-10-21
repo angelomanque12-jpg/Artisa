@@ -20,7 +20,7 @@ RECIENTE_MIN = 15        # un dato más viejo es "sin señal reciente" (igual qu
 EN_RUTA_KMH = 5          # sobre esto el camión va en ruta; si no, está detenido
 SERIE_DIAS = 14          # km por día en la tarjeta de cada camión
 HISTORIAL_DIAS = 30      # días que se muestran en la ficha: siempre los 30 que terminan hoy
-PARADA_MIN = 10          # igual que machine_learning/viajes.py (PARADA_MIN_MIN)
+PARADA_MIN = 10          # igual que machine_learning/modelo_rutas.py (PARADA_MIN_MIN)
 
 
 def _local(value):
