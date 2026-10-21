@@ -7,12 +7,20 @@
   <link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23163035'/%3E%3Cg transform='translate(7,7)scale(.1)'%3E%3Cpath d='M251,0C112,0,0,112,0,251c0,31,5,60,16,88L251,56l235,283c11-28,16-57,16-88C502,112,390,0,251,0Z' fill='%237ca727'/%3E%3Cpath d='M251,181L108,468Q251,536,394,468Z' fill='white'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="/mapa-base.css?v=20261015-dashboard2">
+<<<<<<< Updated upstream
   <link rel="stylesheet" href="/style.css?v=20261015-dashboard2">
+=======
+  <link rel="stylesheet" href="/style.css?v=20261021-dashboard11">
+>>>>>>> Stashed changes
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js" defer></script>
   <script src="/mapa-base.js?v=20261015-dashboard2" defer></script>
   <script src="/map-data.js?v=20261015-dashboard2" defer></script>
+<<<<<<< Updated upstream
   <script src="/app.js?v=20261015-dashboard2" defer></script>
+=======
+  <script src="/app.js?v=20261021-dashboard11" defer></script>
+>>>>>>> Stashed changes
 </head>
 <body>
   <noscript>Activa JavaScript para iniciar sesión en Artisa.</noscript>
@@ -232,6 +240,7 @@
           <div><span class="eyebrow">PANEL DE FLOTA</span><h2 id="dashboard-title">Dashboard de la flota</h2></div>
           <span id="dashboard-snapshot" class="status neutral">Preparando indicadores…</span>
         </div>
+<<<<<<< Updated upstream
         <div class="fd-tabs" role="tablist" aria-label="Vista del dashboard">
           <button type="button" class="fd-tab is-active" role="tab" aria-selected="true" data-dash-tab="global"><strong>Datos globales</strong><small>Rutas clasificadas, zonas y estado de la flota</small></button>
           <button type="button" class="fd-tab" role="tab" aria-selected="false" data-dash-tab="detalle"><strong>Datos detallados</strong><small>Reportes y km por patente, del mes o de todos los meses</small></button>
@@ -315,6 +324,132 @@
               </article>
             </aside>
           </div>
+=======
+        <div id="dash-global" role="tabpanel" aria-label="Datos globales">
+          <p class="telemetry-intro">Revisa la actividad mensual y los camiones que necesitan atención en una vista de solo lectura.</p>
+          <article class="dashboard-card fd-live-summary fd-live-attention-card">
+            <div class="fd-live-attention-head"><div><span class="eyebrow">ATENCIÓN</span><h3>Camiones que conviene revisar</h3></div><b id="dg-live-alert-count" class="fd-count">—</b></div>
+            <p>Vehículos sin una señal reciente.</p>
+            <ul id="dg-live-alerts" class="fd-silent-list"><li class="chart-empty">Consultando la flota…</li></ul>
+          </article>
+
+          <article class="dashboard-card fd-overview-activity">
+            <div class="dashboard-card-heading fd-activity-heading">
+              <div><span class="eyebrow">ACTIVIDAD DEL MES</span><h3 id="dg-activity-title">Evolución diaria de la flota</h3></div>
+              <div class="fd-section-tools">
+                <label class="fd-section-filter" for="dg-activity-month"><span>Período</span><select id="dg-activity-month" data-dashboard-month="activity" aria-label="Mes del gráfico de actividad"></select></label>
+                <label class="fd-section-filter" for="dg-activity-order"><span>Orden de los días</span><select id="dg-activity-order" aria-label="Orden de los días"><option value="asc">Más antiguo primero</option><option value="desc">Más reciente primero</option></select></label>
+                <label class="fd-section-filter" for="dg-activity-day-type"><span>Tipo de día</span><select id="dg-activity-day-type" aria-label="Tipo de día"><option value="all">Todos los días</option><option value="weekdays">Lunes a viernes</option><option value="weekends">Fines de semana</option></select></label>
+                <div class="fd-metric fd-overview-metrics" role="group" aria-label="Indicador del gráfico diario">
+                  <span>Ver:</span>
+                  <button type="button" data-dash-overview-metric="km" aria-pressed="true" class="is-active">Km</button>
+                  <button type="button" data-dash-overview-metric="reportes" aria-pressed="false">Reportes</button>
+                  <button type="button" data-dash-overview-metric="camiones" aria-pressed="false">Camiones</button>
+                  <button type="button" data-dash-overview-metric="paradas" aria-pressed="false">Paradas</button>
+                  <button type="button" data-dash-overview-metric="detenido" aria-pressed="false">Tiempo detenido</button>
+                </div>
+              </div>
+            </div>
+            <p id="dg-activity-note">Cada barra representa un día.</p>
+            <div id="dg-activity-chart" class="fd-overview-chart" role="group" aria-label="Actividad diaria del mes"><span class="chart-empty">Cargando actividad…</span></div>
+            <div id="dg-activity-insights" class="fd-activity-insights" aria-live="polite"></div>
+          </article>
+
+          <div class="dashboard-kpis fd-kpis" aria-label="Resultados operativos del mes">
+            <article><span>Kilómetros recorridos</span><strong id="dg-ops-km">—</strong><small id="dg-ops-km-note">Acumulado del mes</small></article>
+            <article><span>Paradas registradas</span><strong id="dg-ops-stops">—</strong><small id="dg-ops-stops-note">Paradas de 10 minutos o más</small></article>
+            <article><span>Tiempo detenido</span><strong id="dg-ops-stopped">—</strong><small id="dg-ops-stopped-note">Suma de todos los camiones</small></article>
+          </div>
+
+          <div class="fd-pair fd-operations-pair">
+            <article class="dashboard-card fd-ops-ranking-card">
+              <div class="dashboard-card-heading fd-activity-heading">
+                <div><span class="eyebrow">COMPARACIÓN POR CAMIÓN</span><h3 id="dg-ops-ranking-title">Camiones con más paradas</h3></div>
+                <div class="fd-section-tools">
+                  <label class="fd-section-filter" for="dg-ranking-month"><span>Período</span><select id="dg-ranking-month" data-dashboard-month="ranking" aria-label="Mes del ranking de camiones"></select></label>
+                  <div class="fd-metric fd-ops-metrics" role="group" aria-label="Indicador del ranking de camiones">
+                    <button type="button" class="is-active" data-dash-rank-metric="paradas" aria-pressed="true">Paradas</button>
+                    <button type="button" data-dash-rank-metric="detenido" aria-pressed="false">Tiempo detenido</button>
+                    <button type="button" data-dash-rank-metric="km" aria-pressed="false">Km</button>
+                  </div>
+                </div>
+              </div>
+              <p id="dg-ops-ranking-note">Permite detectar vehículos que se detienen con mayor frecuencia.</p>
+              <div class="fd-ranking-filters" aria-label="Filtros de la comparación por camión">
+                <label class="fd-section-filter" for="dg-ranking-order"><span>Ordenar</span><select id="dg-ranking-order" aria-label="Orden del ranking"><option value="desc">Mayor valor primero</option><option value="asc">Menor valor primero</option></select></label>
+                <label class="fd-section-filter" for="dg-ranking-days"><span>Días activos</span><select id="dg-ranking-days" aria-label="Mínimo de días activos del ranking"><option value="0">Todos</option><option value="5">Al menos 5 días</option><option value="10">Al menos 10 días</option><option value="15">Al menos 15 días</option></select></label>
+                <label class="fd-section-filter" for="dg-ranking-limit"><span>Mostrar</span><select id="dg-ranking-limit" aria-label="Cantidad de camiones del ranking"><option value="8">8 camiones</option><option value="15">15 camiones</option><option value="0">Todos</option></select></label>
+                <label class="fd-section-filter fd-filter-search" for="dg-ranking-search"><span>Buscar camión</span><input id="dg-ranking-search" type="search" placeholder="Patente o nombre…" aria-label="Buscar camión en el ranking"></label>
+              </div>
+              <div id="dg-ops-ranking" class="dashboard-bars fd-ops-ranking"><span class="chart-empty">Calculando el ranking…</span></div>
+              <p id="dg-ranking-summary" class="fd-filter-summary" aria-live="polite"></p>
+            </article>
+
+            <article class="dashboard-card fd-efficiency-card">
+              <div class="dashboard-card-heading"><div><span class="eyebrow">EFICIENCIA POR CAMIÓN</span><h3 id="dg-efficiency-title">Tiempo detenido por cada 100 km</h3></div></div>
+              <p id="dg-efficiency-note">Compara cuánto tiempo permanece detenido cada camión en relación con su recorrido.</p>
+              <div class="fd-efficiency-filters" aria-label="Filtros del gráfico de eficiencia">
+                <label class="fd-section-filter" for="dg-efficiency-month"><span>Período</span><select id="dg-efficiency-month" data-dashboard-month="efficiency" aria-label="Mes del gráfico de eficiencia"></select></label>
+                <label class="fd-section-filter" for="dg-efficiency-order"><span>Ordenar</span><select id="dg-efficiency-order" aria-label="Orden del gráfico de eficiencia"><option value="rate-desc">Mayor detención</option><option value="rate-asc">Menor detención</option><option value="days-desc">Más días activos</option><option value="days-asc">Menos días activos</option></select></label>
+                <label class="fd-section-filter" for="dg-efficiency-days"><span>Días activos</span><select id="dg-efficiency-days" aria-label="Mínimo de días con actividad"><option value="0">Todos</option><option value="5">Al menos 5 días</option><option value="10">Al menos 10 días</option><option value="15">Al menos 15 días</option></select></label>
+                <label class="fd-section-filter" for="dg-efficiency-min-km"><span>Recorrido mínimo</span><select id="dg-efficiency-min-km" aria-label="Recorrido mínimo"><option value="0">Sin mínimo</option><option value="100" selected>100 km</option><option value="500">500 km</option><option value="1000">1.000 km</option></select></label>
+                <label class="fd-section-filter" for="dg-efficiency-limit"><span>Mostrar</span><select id="dg-efficiency-limit" aria-label="Cantidad de camiones visibles"><option value="10" selected>10 camiones</option><option value="20">20 camiones</option><option value="0">Todos</option></select></label>
+                <label class="fd-section-filter fd-efficiency-search" for="dg-efficiency-search"><span>Buscar camión</span><input id="dg-efficiency-search" type="search" placeholder="Patente o nombre…" aria-label="Buscar camión en el gráfico de eficiencia"></label>
+              </div>
+              <div class="fd-efficiency-guide"><span><i></i> Menor detención relativa</span><span class="is-warning"><i></i> Valores que conviene revisar</span><strong>Menor es mejor</strong></div>
+              <div id="dg-efficiency-chart" class="dashboard-bars fd-efficiency-ranking" role="group" aria-label="Ranking de minutos detenidos por cada 100 kilómetros"><span class="chart-empty">Preparando comparación…</span></div>
+              <p id="dg-efficiency-summary" class="fd-efficiency-summary" aria-live="polite"></p>
+            </article>
+          </div>
+
+          <article class="dashboard-card fd-operational-findings">
+            <div class="dashboard-card-heading"><div><span class="eyebrow">HALLAZGOS DEL MES</span><h3>Qué conviene revisar primero</h3></div></div>
+            <p>Estos resultados comparan a los camiones con actividad en el período y sirven como punto de partida para una revisión operativa.</p>
+            <div class="fd-findings-filters" aria-label="Filtros de los hallazgos del mes">
+              <label class="fd-section-filter" for="dg-findings-month"><span>Período</span><select id="dg-findings-month" data-dashboard-month="findings" aria-label="Mes de los hallazgos operativos"></select></label>
+              <label class="fd-section-filter" for="dg-findings-days"><span>Días activos</span><select id="dg-findings-days" aria-label="Mínimo de días activos de los hallazgos"><option value="0">Todos</option><option value="5">Al menos 5 días</option><option value="10">Al menos 10 días</option><option value="15">Al menos 15 días</option></select></label>
+              <label class="fd-section-filter" for="dg-findings-min-km"><span>Recorrido mínimo</span><select id="dg-findings-min-km" aria-label="Recorrido mínimo de los hallazgos"><option value="0">Sin mínimo</option><option value="100" selected>100 km</option><option value="500">500 km</option><option value="1000">1.000 km</option></select></label>
+            </div>
+            <div id="dg-operational-insights" class="fd-finding-grid"><span class="chart-empty">Analizando la actividad…</span></div>
+            <p id="dg-findings-summary" class="fd-filter-summary" aria-live="polite"></p>
+          </article>
+
+          <div class="fd-pair fd-history-pair">
+            <article class="dashboard-card fd-history-card">
+              <div class="dashboard-card-heading fd-history-heading">
+                <div><span class="eyebrow">HISTORIAL ACUMULADO</span><h3>Evolución mes a mes</h3></div>
+                <button type="button" id="dash-history-csv" class="fd-csv">↓ Descargar comparación histórica</button>
+              </div>
+              <p id="dash-history-range">Comparación desde abril de 2026 hasta la actualidad.</p>
+              <div class="fd-metric fd-history-selector" role="group" aria-label="Indicador del historial acumulado">
+                <span>Ver:</span>
+                <button type="button" class="is-active" data-dash-history-metric="reportes" aria-pressed="true">Reportes</button>
+                <button type="button" data-dash-history-metric="km" aria-pressed="false">Km</button>
+              </div>
+              <div id="dg-history-chart" class="dashboard-bars fd-history-chart"><span class="chart-empty">Preparando historial…</span></div>
+            </article>
+            <article class="dashboard-card fd-quality">
+              <div class="dashboard-card-heading"><div><span class="eyebrow">CALIDAD DE DATOS</span><h3>Días procesados</h3></div></div>
+              <p>Comprueba los cierres y registros descartados desde abril de 2026 hasta la actualidad.</p>
+              <div class="fd-meter" aria-hidden="true"><i id="dash-q-bar"></i></div>
+              <ul id="dash-quality" class="fd-quality-list"><li class="chart-empty">Revisando los cierres…</li></ul>
+            </article>
+          </div>
+
+          <article class="dashboard-card fd-daily-report fd-consolidated-report">
+            <div class="dashboard-card-heading fd-daily-heading">
+              <div><span class="eyebrow">INFORME MENSUAL</span><h3>Detalle diario y descarga</h3></div>
+              <div class="history-month-actions">
+                <label class="history-month-field"><span>Mes</span><input type="month" id="history-month" min="2026-04" aria-label="Mes a consultar"></label>
+                <button type="button" class="fd-csv" id="history-month-download">↓ Descargar informe completo</button>
+              </div>
+            </div>
+            <p>Consulta los valores exactos de cada día. El CSV incluye una fila por camión y día con reportes, kilómetros, paradas y tiempo detenido.</p>
+            <p id="history-month-download-status" class="history-download-status" aria-live="polite"></p>
+            <div class="table-scroll telemetry-table fd-daily-table"><table><thead><tr><th>Día</th><th>Estado</th><th>Camiones</th><th>Reportes</th><th>Km observados</th><th>Paradas</th></tr></thead><tbody id="history-month-rows"></tbody></table></div>
+          </article>
+          <div class="dashboard-method"><strong>Cómo leer estos datos</strong><span>Se calculan con kilómetros, reportes GPS, paradas y minutos detenidos ya guardados por camión y día. No incluyen combustible porque la fuente actual no informa litros ni cargas.</span></div>
+>>>>>>> Stashed changes
         </div>
       </section>
     </div>
