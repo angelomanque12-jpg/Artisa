@@ -11,3 +11,5 @@ exports/
 respaldos/
 # Datos de prueba de los cuadernos (contienen datos de la empresa)
 guias_ml/*.csv
+# Registro del instalador (instalar.sh)
+instalacion.log

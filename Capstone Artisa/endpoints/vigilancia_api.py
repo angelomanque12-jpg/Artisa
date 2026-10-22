@@ -71,7 +71,7 @@ def leer_modelo(cursor):
         "parametros": parametros, "niveles": niveles,
     }
     mapa = rm.MapaRutas(rutas)
-    _CACHE.update(version=(version["id"], version["creado_en"]), modelo=dict(modelo, rutas=rutas, red=mapa.red(rutas)),
+    _CACHE.update(version=(version["id"], version["creado_en"]), modelo=dict(modelo, rutas=rutas, red=mapa.red(rutas, MIN_KM)),
                   mapa=mapa)
     return _CACHE["modelo"], mapa
 

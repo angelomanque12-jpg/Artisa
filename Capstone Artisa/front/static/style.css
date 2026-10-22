@@ -1089,3 +1089,11 @@ a.db-cal-day:hover{outline:2px solid var(--ink);outline-offset:1px}
 .db-section-head span{color:var(--muted);font-size:10px}
 .db-bars{max-height:440px;overflow-y:auto;padding-right:4px;scrollbar-width:thin}
 .db-section-head>div{display:grid;gap:3px}
+
+/* Rutas y alertas: la ficha de la selección flota sobre el mapa (a la derecha), con scroll propio */
+.atlas .map-selection-detail.vg-float{position:absolute;z-index:600;top:112px;right:10px;width:330px;max-height:calc(100% - 190px);overflow-y:auto;margin:0;box-shadow:0 12px 32px rgba(20,40,42,.22);scrollbar-width:thin}
+.atlas .map-selection-detail.vg-float[hidden]{display:none}
+.vg-card-head .vg-card-kind{margin-right:auto}
+.vg-card-close{display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;border-radius:50%;background:#eef2ef;color:var(--ink);font-size:11px;cursor:pointer}
+.vg-card-close:hover{background:#dde6e0}
+@media(max-width:690px){.atlas .map-selection-detail.vg-float{position:static;width:auto;max-height:none;margin-top:8px;box-shadow:none}}

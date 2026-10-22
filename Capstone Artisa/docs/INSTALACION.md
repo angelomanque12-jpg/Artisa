@@ -1,7 +1,7 @@
 # Instalación y operación de Artisa
 
 Guía paso a paso para dejar Artisa funcionando en el servidor de la empresa y operarlo.
-Todos los comandos se escriben en una terminal Linux (Ubuntu, o Ubuntu/WSL en Windows).
+Todos los comandos se escriben en una terminal Linux (Ubuntu o Debian).
 **Ningún comando de esta guía borra datos.**
 
 ## Antes de empezar
@@ -14,6 +14,27 @@ Todos los comandos se escriben en una terminal Linux (Ubuntu, o Ubuntu/WSL en Wi
 | Clave de Gemini (opcional) | Para el asistente: https://aistudio.google.com/apikey |
 
 ---
+
+## Forma rápida: un solo comando
+
+En un equipo Ubuntu nuevo, con internet y en la red de la empresa:
+
+```bash
+sudo apt update && sudo apt install -y git
+git clone https://github.com/angelomanque12-jpg/Artisa.git
+cd "Artisa/Capstone Artisa"
+bash instalar.sh
+```
+
+`instalar.sh` hace todo lo de la sección 1: instala Git, Python y Docker, levanta Artisa, carga
+los datos (restaura un respaldo, conecta la API desde el día que indiques o carga el JSON
+histórico), abre el acceso desde la red y deja todo arrancando solo al encender el equipo. Solo
+pregunta la URL de la API, desde qué día traer datos y si se entra desde la red. Al final muestra
+la contraseña de `admin`. Para llevarse los datos de otro equipo, antes de ejecutarlo copia su
+`.env` en `Capstone Artisa/` y su respaldo `artisa_AAAA-MM-DD.sql.gz` en `Capstone Artisa/respaldos/`.
+Se puede repetir sin borrar nada. Registro: `Capstone Artisa/instalacion.log`.
+
+La sección 1 es lo mismo paso a paso, por si algo falla.
 
 ## 1. Servidor desde cero
 

@@ -4,7 +4,7 @@ Monitoreo de la flota con la telemetría GPS real de la empresa: dónde está ca
 cada día, qué rutas usa la flota (aprendidas por machine learning) y alertas cuando un camión
 sale de ellas.
 
-- **Instalar en el servidor y operar:** [docs/INSTALACION.md](docs/INSTALACION.md)
+- **Instalar en un equipo nuevo (un solo comando):** `bash instalar.sh` desde `Capstone Artisa` · detalle y operación: [docs/INSTALACION.md](docs/INSTALACION.md)
 - **Web:** http://localhost:8080 (o `http://IP-DEL-SERVIDOR:8080` desde la red), usuario `admin`
 - **Comandos:** `python3 scripts/artisa.py --help`
 

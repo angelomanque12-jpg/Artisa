@@ -187,23 +187,52 @@ class MapaRutas:
                             tramo[1].add(k)
                         anterior = c
         # Celdas de rutas N1–N4 agrupadas en cuadros de 0,1° para medir distancias rápido.
+        # Y en cuadros de 0,02° (~2 km) para saber rápido si algo pasa junto a una ruta habitual.
         self.indice = defaultdict(list)
+        self.indice_fino = defaultdict(list)
         for (i, j), (numero, _) in self.celdas.items():
             if numero <= HABITUAL:
                 lat, lon = centro(i), centro(j)
                 self.indice[(math.floor(lat * 10), math.floor(lon * 10))].append((lat, lon))
+                self.indice_fino[(math.floor(lat * 50), math.floor(lon * 50))].append((lat, lon))
 
-    def red(self, rutas):
-        """{"nodos": [[lat, lon], …], "tramos": [[a, b, nivel, total, [rutas…]], …]} con las rutas
-        de cada tramo ordenadas de la más a la menos concurrida (a lo más MAX_RUTAS_TRAMO)."""
+    def red(self, rutas, km_aparte=2.0):
+        """{"nodos": [[lat, lon], …], "tramos": [[a, b, nivel, total, [rutas…], aparte], …]} con las
+        rutas de cada tramo ordenadas de la más a la menos concurrida (a lo más MAX_RUTAS_TRAMO).
+
+        aparte = 1 en un tramo mínimo (N5) que pasa a km_aparte o más de toda ruta habitual: un
+        camino que de verdad casi nadie usa. Un tramo N5 más cerca suele ir por la misma carretera
+        que una ruta habitual (otro trazo GPS del mismo camino) y no es un desvío; es la misma
+        distancia que usan las alertas."""
         indice, nodos = {}, []
         for c, (la, lo, n) in self.sumas.items():
             indice[c] = len(nodos)
             nodos.append([round(la / n, 5), round(lo / n, 5)])
         orden = lambda k: (numero_nivel(rutas[k]["nivel"]), -rutas[k]["camiones"], k)  # noqa: E731
-        tramos = [[indice[a], indice[b], numero, len(usan), sorted(usan, key=orden)[:MAX_RUTAS_TRAMO]]
-                  for (a, b), (numero, usan) in self.tramos.items()]
+        tramos = []
+        for (a, b), (numero, usan) in self.tramos.items():
+            ia, ib = indice[a], indice[b]
+            aparte = 0
+            if numero == 5:
+                lat = (nodos[ia][0] + nodos[ib][0]) / 2
+                lon = (nodos[ia][1] + nodos[ib][1]) / 2
+                aparte = 0 if self.junto_a_habitual(lat, lon, km_aparte) else 1
+            tramos.append([ia, ib, numero, len(usan), sorted(usan, key=orden)[:MAX_RUTAS_TRAMO], aparte])
         return {"nodos": nodos, "tramos": tramos}
+
+    def junto_a_habitual(self, lat, lon, km):
+        """¿Hay una ruta N1–N4 a menos de km? Primero las celdas vecinas (~1 km); después los
+        cuadros de ~2 km (o de ~11 km si km es mayor) alrededor."""
+        if self.habitual(lat, lon):
+            return True
+        escala, indice = (50, self.indice_fino) if km <= 2 else (10, self.indice)
+        bi, bj = math.floor(lat * escala), math.floor(lon * escala)
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                for la, lo in indice.get((bi + di, bj + dj), ()):
+                    if distancia_km(lat, lon, la, lo) < km:
+                        return True
+        return False
 
     def en(self, lat, lon):
         """(nivel 1..6, route_id) de la mejor ruta en la celda o sus vecinas (~1 km)."""

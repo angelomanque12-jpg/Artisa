@@ -330,22 +330,6 @@ function openExplorer() {
   frame?.contentWindow?.postMessage("artisa:show-map", location.origin);
 }
 
-function setSelectionDetail(kind, title, description, metadata) {
-  const detail = $("map-selection-detail");
-  const type = document.createElement("span");
-  type.textContent = kind;
-  const heading = document.createElement("strong");
-  heading.textContent = title;
-  const copy = document.createElement("p");
-  copy.textContent = description;
-  detail.replaceChildren(type, heading, copy);
-  if (metadata) {
-    const extra = document.createElement("small");
-    extra.textContent = metadata;
-    detail.append(extra);
-  }
-}
-
 // --- Camiones ---
 function vehicleDriver(vehicle) {
   const structured = [vehicle.driver_name, vehicle.driver_last_name]
@@ -416,18 +400,24 @@ function vgDrawUsage() {
   if (!red) return;
   const focus = Boolean(vg.selected);
   const onlyMinimal = vg.zone === "rare" && !focus;
+  // Con "Solo caminos raros" se resaltan los tramos mínimos que van a 2 km o más de toda ruta
+  // habitual (aparte = 1): los que siguen la misma carretera que una habitual no son un desvío.
+  // El resto queda con sus colores, tenue, para no perder la referencia.
   const groups = {};
-  for (const [a, b, level] of red.tramos) (groups[level] ||= []).push([red.nodos[a], red.nodos[b]]);
-  // De la menos usada a la troncal: las troncales quedan encima.
-  for (const number of [5, 4, 3, 2, 1]) {
-    const segments = groups[number];
+  for (const [a, b, level, , , apart] of red.tramos) {
+    const key = onlyMinimal && level === 5 && apart ? "raro" : level;
+    (groups[key] ||= []).push([red.nodos[a], red.nodos[b]]);
+  }
+  // De la menos usada a la troncal: las troncales quedan encima; lo raro, encima de todo.
+  for (const key of [5, 4, 3, 2, 1, "raro"]) {
+    const segments = groups[key];
     if (!segments) continue;
-    const style = ROUTE_LEVELS["N" + number];
-    const muted = focus || (onlyMinimal && number !== 5);
+    const style = ROUTE_LEVELS["N" + (key === "raro" ? 5 : key)];
+    const faded = !focus && onlyMinimal && key !== "raro";
     L.polyline(segments, {renderer: usageRenderer, lineCap: "round", lineJoin: "round", interactive: false,
-      color: muted ? "#93a29e" : style.color,
-      weight: focus ? Math.max(1.5, style.weight / 3) : muted ? 2 : (onlyMinimal ? 4.5 : style.weight),
-      opacity: focus ? 0.4 : muted ? 0.45 : 0.9}).addTo(usageLayer);
+      color: focus ? "#93a29e" : style.color,
+      weight: focus ? Math.max(1.5, style.weight / 3) : key === "raro" ? 5 : faded ? Math.max(1.5, style.weight * 0.6) : style.weight,
+      opacity: focus ? 0.4 : faded ? 0.28 : 0.9}).addTo(usageLayer);
   }
   if (focus) return;
   // Franja invisible más ancha encima: tocar un camino muestra su nivel y qué rutas pasan.
@@ -996,13 +986,34 @@ function vgFact(value, label) {
   return box;
 }
 
+// La ficha flota sobre el mapa (en celular va debajo) y se cierra con ✕ o con Esc. Reemplaza al
+// globo del camión: no se abren los dos con lo mismo.
 function vgCard(kind, state, title, extra) {
   const detail = $("map-selection-detail");
   detail.classList.add("vg-card");
   const head = el("div", "vg-card-head");
   head.append(el("span", "vg-card-kind", kind));
   if (state) head.append(state);
+  const close = el("button", "vg-card-close", "✕");
+  close.type = "button";
+  close.title = "Cerrar";
+  close.setAttribute("aria-label", "Cerrar la ficha");
+  close.addEventListener("click", () => vgReset(false));
+  head.append(close);
   detail.replaceChildren(head, title, ...extra);
+  detail.hidden = false;
+  detail.scrollTop = 0;
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && vg.selected && !$("map-selection-detail").hidden) vgReset(false);
+});
+
+// Márgenes para centrar algo en el mapa sin que lo tape la ficha flotante.
+function vgFocusPadding() {
+  const card = $("map-selection-detail");
+  const floating = !card.hidden && getComputedStyle(card).position === "absolute";
+  return {paddingTopLeft: [50, 70], paddingBottomRight: [floating ? card.offsetWidth + 40 : 50, 70]};
 }
 
 // Dónde anda: en qué ruta mínima o si está fuera de toda ruta aprendida.
@@ -1083,7 +1094,7 @@ function vgShowAlert(alert, focus) {
     const bounds = L.latLngBounds(alert.estela.flat());
     for (const cut of alert.cortes || []) { bounds.extend(cut.antes); if (cut.despues) bounds.extend(cut.despues); }
     if (alert.corredor) bounds.extend(alert.corredor.punto);
-    fleetMap.fitBounds(bounds, {padding: [60, 60], maxZoom: 13});
+    fleetMap.fitBounds(bounds, {...vgFocusPadding(), maxZoom: 13});
   }
 }
 
@@ -1106,7 +1117,7 @@ function vgCutRow(cut, number) {
   if (extra.length) row.append(el("span", "vg-cut-extra", extra.join(" · ")));
   row.addEventListener("click", () => {
     const bounds = L.latLngBounds([cut.antes, cut.despues || cut.antes]);
-    fleetMap.fitBounds(bounds.pad(0.6), {maxZoom: 13});
+    fleetMap.fitBounds(bounds.pad(0.6), {...vgFocusPadding(), maxZoom: 13});
   });
   return row;
 }
@@ -1150,8 +1161,8 @@ function vgShowVehicle(vehicle, focus) {
     facts, link]);
   const marker = truckMarkers.get(vehicle.vehicle_id);
   if (marker && focus) {
-    fleetMap.setView(marker.getLatLng(), Math.max(fleetMap.getZoom(), 11));
-    marker.openPopup();
+    const point = marker.getLatLng();
+    fleetMap.fitBounds(L.latLngBounds([point, point]), {...vgFocusPadding(), maxZoom: Math.max(fleetMap.getZoom(), 11)});
   }
 }
 
@@ -1177,9 +1188,8 @@ function vgReset(fit = true) {
   if (selectionLayer) selectionLayer.clearLayers();
   if (usageLayer) vgDrawUsage();
   if (fleetMap) fleetMap.closePopup();
-  $("map-selection-detail").classList.remove("vg-card");
-  setSelectionDetail("Selección", "Elige una alerta o un camión",
-    "El mapa mostrará solo lo suyo.");
+  $("map-selection-detail").hidden = true;
+  $("map-selection-detail").replaceChildren();
   vgApplyLayers();
   vgMarkSelection();
   if (fit) vgFit(true);

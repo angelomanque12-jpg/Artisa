@@ -112,6 +112,21 @@ class ModeloTests(unittest.TestCase):
         self.assertEqual(len(pares), len(red["tramos"]))   # sin tramos repetidos
         self.assertTrue(all(abs(lon + 68.90) < 1e-6 or abs(lon + 68.70) < 1e-6 for _, lon in red["nodos"]))
 
+    def test_minimal_roads_next_to_a_usual_one_are_not_apart(self):
+        # Una ruta mínima a ~600 m de la troncal (otro trazo del mismo camino) no es un camino
+        # aparte; la de -68.70 (a ~20 km) sí.
+        global RUTAS
+        original = RUTAS
+        RUTAS = original + [dict(original[1], route_id="R-PARALELA", geometria=linea(-68.894))]
+        try:
+            red = v.rutas_aprendidas(cursor_con())["red"]
+        finally:
+            RUTAS = original
+        minimas = [(red["nodos"][a][1], aparte) for a, _, nivel, _, _, aparte in red["tramos"] if nivel == 5]
+        self.assertTrue(all(aparte == 0 for lon, aparte in minimas if abs(lon + 68.894) < 0.002))
+        self.assertTrue(all(aparte == 1 for lon, aparte in minimas if abs(lon + 68.70) < 0.002))
+        self.assertTrue(any(abs(lon + 68.894) < 0.002 for lon, _ in minimas))
+
     def test_position_level_uses_the_cell_and_its_neighbors(self):
         _, mapa = v.leer_modelo(cursor_con())
         self.assertEqual(mapa.en(-22.5, -68.9), (1, "R-TRONCAL"))
