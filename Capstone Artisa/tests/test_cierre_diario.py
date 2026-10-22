@@ -237,6 +237,20 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(hecho, [(date(2026, 10, 6), "en_curso")])
 
 
+class AlertCycleTests(unittest.TestCase):
+    def test_live_alerts_use_a_connection_independent_from_daily_close(self):
+        class Context:
+            def __enter__(self): return "conexion-alertas"
+            def __exit__(self, *exc): return False
+
+        with patch.object(diario_worker, "connect_db", return_value=Context()) as connect, \
+             patch.object(diario_worker, "publicar_alertas") as publish:
+            diario_worker.ciclo_alertas()
+
+        connect.assert_called_once_with(autocommit=False, read_timeout=600)
+        self.assertEqual(publish.call_args.args[0], "conexion-alertas")
+
+
 class ReclassificationTests(unittest.TestCase):
     def test_vehicle_no_longer_a_truck_is_removed_from_closed_days(self):
         from machine_learning.diario import quitar_no_camiones

@@ -244,6 +244,27 @@ def publicar_alertas(connection, utc_now):
         print(f"Alertas: no se pudieron revisar ({STATE['alertas']['error']})", flush=True)
 
 
+def ciclo_alertas():
+    """Hace una revisión de alertas con una conexión independiente del cierre histórico."""
+    try:
+        with connect_db(autocommit=False, read_timeout=600) as connection:
+            publicar_alertas(connection, _utc_now())
+    except Exception as error:
+        STATE["alertas"] = {"error": f"{type(error).__name__}: {error}"[:255]}
+        print(f"Alertas: ciclo fallido ({STATE['alertas']['error']})", flush=True)
+
+
+def loop_alertas():
+    """Revisa las alertas cada minuto sin esperar al cierre histórico.
+
+    Recuperar muchos días pendientes puede tardar bastante. La vigilancia usa su propia
+    conexión para que ese trabajo no deje el panel en vivo sin alertas durante horas.
+    """
+    while True:
+        ciclo_alertas()
+        time.sleep(INTERVALO)
+
+
 def _con_bloqueo(connection, funcion, espera=0):
     """Evita que el servicio y una ejecución manual procesen a la vez.
 
@@ -302,8 +323,6 @@ def loop():
                     if not hecho and time.monotonic() - RUTAS_REVISADAS["value"] >= 900:
                         RUTAS_REVISADAS["value"] = time.monotonic()
                         _con_bloqueo(connection, lambda: publicar_rutas(connection, final=True))
-                # Cada minuto, haya o no trabajo programado: alertas de ruta en vivo.
-                publicar_alertas(connection, _utc_now())
             STATE.update(estado="ok", error=None, ultimo_ciclo=_utc_now().isoformat() + "Z")
         except Exception as error:  # MariaDB caída u otro fallo: se reintenta en el próximo ciclo
             STATE.update(estado="error", error=f"{type(error).__name__}: {error}"[:255])
@@ -349,6 +368,10 @@ if __name__ == "__main__":
     import sys
     if "--ahora" in sys.argv:
         raise SystemExit(ejecutar_ahora())
+    # La vigilancia va en un hilo independiente: el cierre puede tardar horas al recuperar
+    # un histórico grande, pero las alertas deben seguir actualizándose cada minuto.
+    alert_worker = threading.Thread(target=loop_alertas, daemon=True, name="alertas-en-vivo")
+    alert_worker.start()
     worker = threading.Thread(target=loop, daemon=True, name="cierre-diario")
     worker.start()
     threading.Thread(target=watchdog, args=(worker,), daemon=True).start()
