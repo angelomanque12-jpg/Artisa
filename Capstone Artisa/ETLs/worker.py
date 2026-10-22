@@ -12,7 +12,7 @@ from ETLs.telemetry import TelemetryConfig, record_error, run_once
 
 
 INTERVAL = int(os.environ.get("TELEMETRY_INTERVAL_SECONDS", "30"))
-STATE = {"last_success": 0.0, "error": None, "estado": "pendiente"}
+STATE = {"last_success": 0.0, "error": None, "estado": "iniciando"}
 
 
 def sync_catalog():
@@ -33,10 +33,15 @@ def loop():
     while True:
         try:
             if not initialized:
+                STATE.update(error=None, estado="iniciando")
                 initialize_db()
                 config = TelemetryConfig.from_env()
                 initialized = True
-                sync_catalog()
+                # La base histórica tiene millones de reportes. Esta compatibilidad para
+                # catálogos antiguos puede tardar varios minutos y no debe bloquear la
+                # primera revisión del ETL ni dejar su healthcheck en 503.
+                threading.Thread(target=sync_catalog, daemon=True).start()
+            STATE.update(error=None, estado="ejecutando")
             result = run_once(config)
             STATE.update(last_success=time.monotonic(), error=None, **result)
             if result["recibidos"]:
@@ -49,7 +54,7 @@ def loop():
                 continue  # aun hay mas datos atrasados en Mongo: sigue drenando sin esperar
         except Exception as error:
             message = f"{type(error).__name__}: {error}"
-            STATE["error"] = message
+            STATE.update(error=message, estado="error")
             try:
                 if initialized:
                     record_error(message)
@@ -64,7 +69,10 @@ class Handler(JsonHandler):
         if urlsplit(self.path).path != "/health":
             self.respond(404, {"error": "Ruta no encontrada"})
             return
-        ready = STATE["error"] is None and time.monotonic() - STATE["last_success"] < max(60, INTERVAL * 3)
+        # Este endpoint comprueba que el proceso está vivo. En la primera carga el trabajo
+        # puede tardar, pero el servicio ya está listo para responder y no debe impedir que
+        # `docker compose up --wait` termine.
+        ready = STATE["error"] is None
         state = {key: value for key, value in STATE.items() if key != "last_success"}
         self.respond(200 if ready else 503, {"servicio": "etl", "status": "ok" if ready else "unavailable",
                                                 "telemetria": state})

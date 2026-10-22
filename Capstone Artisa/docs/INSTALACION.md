@@ -42,6 +42,19 @@ git checkout main
 
 ### 1.3 Levantar Artisa
 
+Desde la terminal integrada de Visual Studio Code, abierta en la carpeta `Artisa`, ejecuta:
+
+```powershell
+.\iniciar-artisa.cmd
+```
+
+Ese es el inicio normal del proyecto. Artisa no se levanta automáticamente al abrir Windows,
+Docker o WSL. El comando anterior inicia los servicios en el orden correcto y conserva todos
+los datos existentes.
+
+Si la terminal integrada ya está usando WSL y se encuentra dentro de `Capstone Artisa`, el
+comando equivalente es:
+
 ```bash
 python3 scripts/artisa.py iniciar
 ```

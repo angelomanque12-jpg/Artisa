@@ -28,7 +28,8 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 12
-    restart: unless-stopped
+    # Artisa se inicia de forma manual desde la terminal de VS Code.
+    restart: "no"
 
   mariadb:
     image: mariadb:11.8
@@ -48,7 +49,7 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 12
-    restart: unless-stopped
+    restart: "no"
 
   etl:
     build:
@@ -72,7 +73,7 @@ services:
       mariadb:
         condition: service_healthy
     healthcheck: *python-health
-    restart: unless-stopped
+    restart: "no"
     init: true
 
   # Telemetría actual: consulta la API de la empresa (requiere estar en su red/Wi-Fi).
@@ -109,7 +110,7 @@ services:
       mariadb:
         condition: service_healthy
     healthcheck: *python-health
-    restart: unless-stopped
+    restart: "no"
     init: true
 
   # Cierre diario (parte de Machine): resume cada día de 00:00 a 00:00 hora Chile con
@@ -144,7 +145,7 @@ services:
       mariadb:
         condition: service_healthy
     healthcheck: *python-health
-    restart: unless-stopped
+    restart: "no"
     init: true
 
   endpoints:
@@ -176,7 +177,7 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 12
-    restart: unless-stopped
+    restart: "no"
     init: true
 
   front:
@@ -195,7 +196,7 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 12
-    restart: unless-stopped
+    restart: "no"
     init: true
 
   # Nginx es la entrada web en localhost:8080: /auth/* va a auth y el resto a front.
@@ -215,7 +216,7 @@ services:
       timeout: 5s
       start_period: 5s
       retries: 12
-    restart: unless-stopped
+    restart: "no"
     init: true
 
   nginx:
@@ -238,7 +239,7 @@ services:
       timeout: 5s
       start_period: 5s
       retries: 12
-    restart: unless-stopped
+    restart: "no"
     init: true
 
   # Respaldo diario de MariaDB en la carpeta respaldos/ (scripts/respaldo.sh).
@@ -258,7 +259,7 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-    restart: unless-stopped
+    restart: "no"
     init: true
 
 volumes:
