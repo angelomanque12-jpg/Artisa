@@ -8,6 +8,8 @@ from tests.test_rutas_api import FakeCursor
 
 HOY = date(2026, 10, 15)
 ESTADO = [
+    {"mes": "2025-10", "dias": 31, "cerrados": 31, "reportes": 4000, "descartados": 20,
+     "desde": date(2025, 10, 1), "hasta": date(2025, 10, 31)},
     {"mes": "2026-04", "dias": 20, "cerrados": 20, "reportes": 1000, "descartados": 7,
      "desde": date(2026, 4, 11), "hasta": date(2026, 4, 30)},
     {"mes": "2026-10", "dias": 15, "cerrados": 13, "reportes": 900, "descartados": 3,
@@ -15,6 +17,8 @@ ESTADO = [
 ]
 CATALOGO = [{"asset_id": "AB1234"}, {"asset_id": "CD5678"}, {"asset_id": "EF9012"}]
 MENSUAL = [
+    {"mes": "2025-10", "asset_id": "AB1234", "asset_name": "906", "reportes": 2000, "km": 5000.0,
+     "dias_activos": 31, "ultimo": date(2025, 10, 31)},
     {"mes": "2026-04", "asset_id": "AB1234", "asset_name": "906", "reportes": 600, "km": 1200.04,
      "dias_activos": 18, "ultimo": date(2026, 4, 30)},
     {"mes": "2026-10", "asset_id": "AB1234", "asset_name": "906", "reportes": 500, "km": 900.0,
@@ -38,6 +42,11 @@ class FleetDashboardTests(unittest.TestCase):
         data = dashboard_api.fleet_dashboard(self.cursor(), HOY)
         self.assertEqual(data["meses"], ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"])
         self.assertEqual((data["desde"], data["mes_en_curso"]), ("2026-04-11", "2026-10"))
+
+    def test_new_current_month_is_added_automatically(self):
+        data = dashboard_api.fleet_dashboard(self.cursor(), date(2026, 11, 1))
+        self.assertEqual(data["meses"][0], "2026-04")
+        self.assertEqual(data["meses"][-1], "2026-11")
 
     def test_monthly_reports_per_plate_only_catalog_trucks(self):
         data = dashboard_api.fleet_dashboard(self.cursor(), HOY)

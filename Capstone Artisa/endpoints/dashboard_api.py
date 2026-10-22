@@ -22,6 +22,10 @@ from common import dias
 # Un camión sin reportes ni ayer ni hoy se marca en la columna "Última señal".
 SIN_REPORTES_DIAS = 2
 
+# Los datos operativos válidos del proyecto comienzan en abril de 2026. El límite
+# superior sigue siendo `hoy`, por lo que cada mes nuevo aparece automáticamente.
+INICIO_DASHBOARD = date(2026, 4, 1)
+
 
 def _catalogo(cursor):
     cursor.execute(
@@ -58,7 +62,9 @@ def fleet_dashboard(cursor, hoy=None):
     calidad = cursor.fetchall()
     if not calidad:
         return None
-    desde = min(fila["desde"] for fila in calidad)
+    fechas_validas = [fila["desde"] for fila in calidad
+                      if fila["desde"] and fila["desde"] >= INICIO_DASHBOARD]
+    desde = min(fechas_validas, default=INICIO_DASHBOARD)
     meses = _meses(desde, hoy)
     posicion = {mes: k for k, mes in enumerate(meses)}
     catalogo = _catalogo(cursor)
