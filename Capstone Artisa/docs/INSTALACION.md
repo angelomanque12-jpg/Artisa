@@ -49,8 +49,14 @@ Desde la terminal integrada de Visual Studio Code, abierta en la carpeta `Artisa
 ```
 
 Ese es el inicio normal del proyecto. Artisa no se levanta automáticamente al abrir Windows,
-Docker o WSL. El comando anterior inicia los servicios en el orden correcto y conserva todos
-los datos existentes.
+Docker o WSL. El comando anterior inicia los servicios en el orden correcto, conserva todos
+los datos existentes y mantiene WSL activo mediante un proceso oculto que no abre otra terminal.
+
+Para detener todos los servicios sin borrar información:
+
+```powershell
+.\detener-artisa.cmd
+```
 
 Si la terminal integrada ya está usando WSL y se encuentra dentro de `Capstone Artisa`, el
 comando equivalente es:
