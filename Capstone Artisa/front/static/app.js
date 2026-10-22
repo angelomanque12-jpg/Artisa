@@ -768,7 +768,7 @@ function vgRenderTrucks() {
     if (!Number.isFinite(Number(vehicle.latitude)) || !Number.isFinite(Number(vehicle.longitude))) continue;
     const marker = L.marker([vehicle.latitude, vehicle.longitude], {pane: "truckPane", icon: truckIcon(vehicle),
       zIndexOffset: vehicle.en_alerta ? 2000 : 1000}).bindPopup(truckPopup(vehicle));
-    marker.on("click", () => vgSelect({kind: "vehicle", id: vehicle.vehicle_id}, false));
+    marker.on("click", () => vgSelect({kind: "vehicle", id: vehicle.vehicle_id}));
     marker.on("popupopen", () => { vg.openPopup = vehicle.vehicle_id; });
     marker.on("popupclose", () => { if (vg.openPopup === vehicle.vehicle_id) vg.openPopup = null; });
     marker.addTo(truckLayer);
